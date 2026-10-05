@@ -40,7 +40,7 @@
 > CareFlow uses synthetic data only. The Gemini free tier allows Google to use submitted content to improve its products, so no real patient data or real voice recordings belong here.
 
 > [!NOTE]
-> **Project status:** the backend for milestones **M1** and **M2** is built and tested (auth, appointments, live queue). The frontend, containers and the voice agent are still to come. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
+> **Project status:** milestones **M1** and **M2** work end to end apart from containers: login, booking, visit history, the live queue and the doctor's queue controls. Docker Compose and the voice agent are still to come. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
 
 ## 💡 The Problem
 
@@ -267,7 +267,7 @@ Every component is free-tier or open source.
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | React 18 · React Router 6 · Socket.io-client · Axios · Recharts |
+| **Frontend** | React 18 · Vite · React Router 6 · Socket.io-client · Axios |
 | **Backend** | Python 3.12 · FastAPI · Uvicorn · python-socketio |
 | **Database** | MongoDB (Motor + Beanie) — Atlas free tier for the demo |
 | **Cache / workflow** | Redis — Upstash free tier for the demo |
@@ -277,7 +277,7 @@ Every component is free-tier or open source.
 | **Intent classifier** | Keyword rules + multilingual sentence-transformers (local, CPU) |
 | **VAD / STT / TTS** | Silero VAD · faster-whisper · Gemini Flash TTS · Piper |
 | **Observability** | structlog · Langfuse (optional, self-hosted) |
-| **Testing** | pytest · httpx · Jest · React Testing Library · Locust |
+| **Testing** | pytest · httpx · Vitest · React Testing Library · Locust |
 | **Quality** | ruff · mypy · ESLint · Prettier · pre-commit · gitleaks |
 | **DevOps** | Docker Compose · GitHub Actions · Dependabot |
 
@@ -285,18 +285,30 @@ Every component is free-tier or open source.
 
 ## 🚀 Quick start
 
-> 🚧 The application code lands in milestone **M1**. These are the intended setup steps; they will work once the scaffold is merged.
+### Try it now — no Docker or database needed
+
+This runs the whole app against an in-memory database that is already seeded. Everything is lost when you stop it.
 
 ```bash
 git clone https://github.com/RahulBailur/CareFlow.git
 cd CareFlow
 
-cp .env.example .env            # add a free Gemini API key, or set LLM_PROVIDER=mock
-docker compose up --build       # app :8000 · mongo :27017 · redis :6379
-docker compose exec app python scripts/seed_data.py
+cd frontend && npm ci && npm run build && cd ..
+
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # macOS / Linux: source .venv/bin/activate
+pip install -e ".[dev]"
+python scripts/dev_server.py
 ```
 
-Then open **http://localhost:8000**.
+Then open **http://localhost:8000**. The server prints a patient, a doctor and an admin login when it starts.
+
+To see the live queue, open the patient in one browser window and the doctor in another, then start a consultation or broadcast a delay from the doctor's side.
+
+### With Docker Compose
+
+> 🚧 Not built yet. The Dockerfile and Compose file (app + MongoDB + Redis) are the remaining part of milestone **M1**.
 
 <details>
 <summary><b>Optional — fully offline LLM fallback</b></summary>
@@ -371,8 +383,8 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 
 | | Milestone | Scope | Tag |
 |:---:|---|---|:---:|
-| 🚧 | **M1 — Foundation** | Repo, CI, pre-commit, models, auth, seed data ✅ · Docker Compose, demo banner ⬜ | `v0.1.0` |
-| 🚧 | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast ✅ · patient and doctor screens ⬜ | `v0.2.0` |
+| 🚧 | **M1 — Foundation** | Repo, CI, pre-commit, models, auth, seed data, demo banner ✅ · Docker Compose ⬜ | `v0.1.0` |
+| ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
 | ⬜ | **M3 — Agents & Pipeline B** | Intent classifier, specialist agents, guardrails + tests, eval set, cascaded voice pipeline, barge-in | `v0.3.0` |
 | ⬜ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
 | ⬜ | **M5 — Analytics & demo** | Analytics page, demo deployment, benchmarks, demo GIF, "hardest problem" write-up | `v0.5.0` |

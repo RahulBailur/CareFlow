@@ -55,7 +55,8 @@ async def test_cannot_self_register_as_doctor_or_admin(client: AsyncClient, role
 async def test_no_role_specific_register_endpoint(client: AsyncClient, role: str) -> None:
     response = await client.post(f"/api/auth/register/{role}", json=PATIENT)
 
-    assert response.status_code == 404
+    # 404 normally; 405 when the built frontend's catch-all page route is mounted
+    assert response.status_code in (404, 405)
     assert await User.count() == 0
 
 
