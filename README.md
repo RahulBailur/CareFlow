@@ -40,7 +40,7 @@
 > CareFlow uses synthetic data only. The Gemini free tier allows Google to use submitted content to improve its products, so no real patient data or real voice recordings belong here.
 
 > [!NOTE]
-> **Project status:** this repository is at the start of milestone **M1**. The design below is the plan from the [PRD](PRD.md); features, benchmarks and the demo are added milestone by milestone. See the [Roadmap](#-roadmap) for what exists today.
+> **Project status:** the backend for milestones **M1** and **M2** is built and tested (auth, appointments, live queue). The frontend, containers and the voice agent are still to come. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
 
 ## 💡 The Problem
 
@@ -348,6 +348,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 |---|---|---|---|
 | `POST` | `/api/auth/register` | — | Register a patient |
 | `POST` | `/api/auth/login` | — | Login (all roles) |
+| `GET` | `/api/auth/me` | JWT | The logged-in user |
 | `GET` | `/api/appointments/availability` | JWT | Open slots by department / doctor / date |
 | `POST` | `/api/appointments/book` | Patient | Book a slot (`409` if taken) |
 | `PUT` | `/api/appointments/{id}` | Owner | Reschedule / cancel |
@@ -370,8 +371,8 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 
 | | Milestone | Scope | Tag |
 |:---:|---|---|:---:|
-| 🚧 | **M1 — Foundation** | Repo, Docker Compose, CI, pre-commit, models, auth, seed data, demo banner | `v0.1.0` |
-| ⬜ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast | `v0.2.0` |
+| 🚧 | **M1 — Foundation** | Repo, CI, pre-commit, models, auth, seed data ✅ · Docker Compose, demo banner ⬜ | `v0.1.0` |
+| 🚧 | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast ✅ · patient and doctor screens ⬜ | `v0.2.0` |
 | ⬜ | **M3 — Agents & Pipeline B** | Intent classifier, specialist agents, guardrails + tests, eval set, cascaded voice pipeline, barge-in | `v0.3.0` |
 | ⬜ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
 | ⬜ | **M5 — Analytics & demo** | Analytics page, demo deployment, benchmarks, demo GIF, "hardest problem" write-up | `v0.5.0` |

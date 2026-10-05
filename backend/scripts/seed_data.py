@@ -7,7 +7,7 @@ Safe to run more than once: existing records are left untouched.
 """
 
 import asyncio
-from datetime import UTC, datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta
 
 from auth_utils import hash_password
 from config import get_settings
@@ -16,8 +16,8 @@ from models.appointment import Appointment, AppointmentStatus
 from models.hospital_config import Department, HospitalConfig
 from models.schedule import Schedule
 from models.user import Role, User
+from time_utils import IST
 
-IST = timezone(timedelta(hours=5, minutes=30))
 SLOT_MINUTES = 15
 OPD_START = "09:00"
 OPD_END = "13:00"

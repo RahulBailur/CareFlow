@@ -16,10 +16,10 @@ async def init_db() -> None:
     if settings.use_mock_db:
         from mongomock_motor import AsyncMongoMockClient
 
-        _client = AsyncMongoMockClient()
+        _client = AsyncMongoMockClient(tz_aware=True)
         database = _client["careflow_test"]
     else:
-        _client = AsyncIOMotorClient(settings.mongo_uri)
+        _client = AsyncIOMotorClient(settings.mongo_uri, tz_aware=True)
         database = _client.get_default_database(default="careflow")
     await init_beanie(database=database, document_models=DOCUMENT_MODELS)
 

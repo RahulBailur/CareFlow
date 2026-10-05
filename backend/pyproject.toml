@@ -17,6 +17,7 @@ dependencies = [
     "pyjwt>=2.9",
     "bcrypt>=4.2",
     "slowapi>=0.1.9",
+    "python-socketio>=5.11",
 ]
 
 [project.optional-dependencies]
@@ -25,13 +26,14 @@ dev = [
     "pytest-asyncio>=0.24",
     "httpx>=0.27",
     "mongomock-motor>=0.0.34",
+    "aiohttp>=3.10",  # Socket.IO test client
     "ruff>=0.6.9",
     "mypy>=1.11",
 ]
 
 [tool.setuptools]
-py-modules = ["auth_utils", "config", "database", "main", "rate_limit"]
-packages = ["models", "routes", "scripts"]
+py-modules = ["auth_utils", "config", "database", "main", "rate_limit", "sockets", "time_utils"]
+packages = ["models", "routes", "scripts", "services"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -66,5 +68,5 @@ explicit_package_bases = true
 exclude = ["\\.venv", "build"]
 
 [[tool.mypy.overrides]]
-module = ["slowapi.*", "mongomock_motor.*"]
+module = ["slowapi.*", "mongomock_motor.*", "socketio.*"]
 ignore_missing_imports = true
