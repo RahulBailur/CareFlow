@@ -19,7 +19,7 @@ node_modules/
 frontend/build/
 
 # Models, audio and data — never committed
-models/
+/models/
 *.onnx
 *.bin
 *.webm
@@ -34,3 +34,7 @@ dumps/
 .DS_Store
 .vscode/
 .idea/
+
+# Python packaging
+*.egg-info/
+build/

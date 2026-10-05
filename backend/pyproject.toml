@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "careflow-backend"
+version = "0.1.0"
+description = "CareFlow — voice-first patient & appointment assistant (POC)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "beanie>=1.29,<2",
+    "motor>=3.6",
+    "pydantic[email]>=2.8",
+    "pydantic-settings>=2.4",
+    "pyjwt>=2.9",
+    "bcrypt>=4.2",
+    "slowapi>=0.1.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "mongomock-motor>=0.0.34",
+    "ruff>=0.6.9",
+    "mypy>=1.11",
+]
+
+[tool.setuptools]
+py-modules = ["auth_utils", "config", "database", "main", "rate_limit"]
+packages = ["models", "routes", "scripts"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    # Raised inside beanie / lazy_model, not by our code
+    "ignore::pydantic.warnings.PydanticDeprecatedSince211",
+]
+markers = [
+    "guardrail: healthcare/security guardrail tests, run as their own required CI job",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+explicit_package_bases = true
+exclude = ["\\.venv", "build"]
+
+[[tool.mypy.overrides]]
+module = ["slowapi.*", "mongomock_motor.*"]
+ignore_missing_imports = true
