@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = 12
     rate_limit_auth: str = "10/minute"
     seed_default_password: str = ""
+    frontend_build_dir: str = "../frontend/build"
 
     @model_validator(mode="after")
     def _check_runtime(self) -> Self:

@@ -8,6 +8,8 @@ os.environ["JWT_SECRET"] = "test-secret-that-is-at-least-32-bytes-long"
 os.environ["BCRYPT_ROUNDS"] = "4"
 os.environ["RATE_LIMIT_AUTH"] = "5/minute"
 os.environ["SEED_DEFAULT_PASSWORD"] = "seed-password-1"
+# Tests must behave the same whether or not a frontend build happens to exist locally
+os.environ["FRONTEND_BUILD_DIR"] = "no-frontend-build-in-tests"
 
 import pytest  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
