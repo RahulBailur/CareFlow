@@ -1,0 +1,61 @@
+# docker compose up --build        → app :8000, mongo :27017, redis :6379
+# docker compose --profile offline up -d ollama   → optional local LLM fallback
+
+name: careflow
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      # Inside Compose the databases are reached by service name, whatever .env says
+      MONGO_URI: mongodb://mongo:27017/careflow
+      REDIS_URL: redis://redis:6379/0
+      USE_MOCK_DB: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:8
+    # Published on localhost only: this database has no password
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    profiles: ["offline"]
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  ollama_data:

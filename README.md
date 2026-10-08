@@ -40,7 +40,7 @@
 > CareFlow uses synthetic data only. The Gemini free tier allows Google to use submitted content to improve its products, so no real patient data or real voice recordings belong here.
 
 > [!NOTE]
-> **Project status:** milestones **M1** and **M2** work end to end apart from containers: login, booking, visit history, the live queue and the doctor's queue controls. Docker Compose and the voice agent are still to come. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
+> **Project status:** milestones **M1** and **M2** are complete: login, booking, visit history, the live queue and the doctor's queue controls, running in Docker Compose with MongoDB and Redis. The voice agent is still to come. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
 
 ## 💡 The Problem
 
@@ -308,7 +308,17 @@ To see the live queue, open the patient in one browser window and the doctor in 
 
 ### With Docker Compose
 
-> 🚧 Not built yet. The Dockerfile and Compose file (app + MongoDB + Redis) are the remaining part of milestone **M1**.
+This runs the app with a real MongoDB and Redis. Data is kept in a Docker volume between restarts.
+
+```bash
+cp .env.example .env            # then set JWT_SECRET and SEED_DEFAULT_PASSWORD in .env
+docker compose up --build -d    # app :8000 · mongo :27017 · redis :6379
+docker compose exec app python scripts/seed_data.py
+```
+
+Then open **http://localhost:8000** and log in with a seeded account (for example `ananya@careflow.example`) and the password you set as `SEED_DEFAULT_PASSWORD`.
+
+`docker compose down` stops everything; add `-v` to also delete the data.
 
 <details>
 <summary><b>Optional — fully offline LLM fallback</b></summary>
@@ -383,7 +393,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 
 | | Milestone | Scope | Tag |
 |:---:|---|---|:---:|
-| 🚧 | **M1 — Foundation** | Repo, CI, pre-commit, models, auth, seed data, demo banner ✅ · Docker Compose ⬜ | `v0.1.0` |
+| ✅ | **M1 — Foundation** | Repo, Docker Compose, CI, pre-commit, models, auth, seed data, demo banner | `v0.1.0` |
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
 | ⬜ | **M3 — Agents & Pipeline B** | Intent classifier, specialist agents, guardrails + tests, eval set, cascaded voice pipeline, barge-in | `v0.3.0` |
 | ⬜ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
