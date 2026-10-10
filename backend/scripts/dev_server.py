@@ -14,6 +14,7 @@ os.environ["USE_MOCK_DB"] = "true"
 os.environ.setdefault("JWT_SECRET", "dev-server-secret-not-for-any-real-deployment")
 os.environ.setdefault("SEED_DEFAULT_PASSWORD", "careflow-demo-1")
 os.environ.setdefault("BCRYPT_ROUNDS", "4")
+os.environ["REDIS_URL"] = ""  # no Redis here: the response cache is off
 
 PORT = 8000
 

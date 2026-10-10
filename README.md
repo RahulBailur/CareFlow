@@ -268,6 +268,21 @@ Whisper pads every utterance to 30 seconds, and its encoder's cost follows the p
 - Hiss, hum and clicks that get past the voice-activity detector are now dropped by a confidence check, where Whisper used to invent a sentence for them.
 - Still about twice the 2.5 s target. The LLM, at about 2 s, is now the largest stage.
 
+#### Optimisation 2 — answer repeat hospital questions from Redis (measured)
+
+A reply about the hospital itself (timings, a department's location, the emergency contact) is the same for every patient, so the LLM's answer is kept in Redis for an hour and reused. The benchmark was run twice: once with an empty cache, then again with the cache the first run had filled. Raw numbers: [`response-cache-cold.json`](backend/eval/results/response-cache-cold.json), [`response-cache-warm.json`](backend/eval/results/response-cache-warm.json).
+
+| The 4 hospital questions | Cache empty | Cache hit |
+|---|---:|---:|
+| LLM stage | 2.1 – 2.6 s | 0.01 – 0.2 s |
+| Time to first audio | 4.4 – 5.1 s | 2.4 – 3.7 s |
+
+- **All 4 hospital questions hit the cache on the second run**, and two of them came in under the 2.5 s target.
+- **The other 15 turns do not benefit**, and the overall median did not improve: it was 4.72 s on the first run and 5.40 s on the second, because the LLM happened to be slower during the second (2.86 s against 2.12 s at P50). Free-tier latency varies by more than this optimisation saves across a mixed set of questions.
+- **By text, a repeated question took 5.7 s the first time and 0.03 s the second.**
+- **Never cached:** anything about a patient (records, bookings, symptoms), and questions that lean on the conversation ("Where is it?"). Keys are hashes, so a patient's wording is not stored.
+- A first-time question still pays for the LLM. The cache only helps what has been asked before, in the same words and language.
+
 #### Intent classifier (measured)
 
 How often the local classifier picks the right agent, and how often it is sure enough to skip the LLM. Run with `python eval/run_eval.py --classifier --set all`.
@@ -308,6 +323,7 @@ Guardrails are enforced **in code, not only in prompts**, and each one has a tes
 | 🔌 Sockets require auth | JWT checked on connect; patients receive only their own queue position |
 | 📅 No double booking | Unique index on `(doctor_id, slot_start)`; a duplicate insert returns `409` |
 | ✋ No change without a confirming turn | Booking, cancelling and rescheduling tools only take effect in the turn after the one that proposed them, so the patient always hears the change first |
+| 🗃️ Only public answers are cached | The Redis response cache holds replies about the hospital only; a reply to a records, booking or symptom question is never stored or shared |
 | 🚦 Abuse and quota protection | Rate limits on auth, chat and voice endpoints |
 | 🧪 Mock DB never used outside tests | The app refuses to start with the mock database unless running in the test environment |
 

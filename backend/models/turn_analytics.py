@@ -19,6 +19,7 @@ class TurnAnalytics(Document):
     language: str
     routed_by: str
     used_llm: bool
+    cache_hit: bool = False
     blocked: bool
     tools_called: list[str]
     stt_provider: str

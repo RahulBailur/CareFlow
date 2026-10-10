@@ -12,6 +12,7 @@ os.environ["SEED_DEFAULT_PASSWORD"] = "seed-password-1"
 os.environ["FRONTEND_BUILD_DIR"] = "no-frontend-build-in-tests"
 # Never a real model in tests, whatever the developer's own .env says
 os.environ["LLM_PROVIDER"] = "mock"
+os.environ["REDIS_URL"] = ""  # tests that want a cache build one on fakeredis
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["INTENT_EMBEDDING_MODEL"] = ""
 os.environ["STT_PROVIDER"] = "mock"

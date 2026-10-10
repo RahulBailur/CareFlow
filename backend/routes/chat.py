@@ -29,6 +29,7 @@ class ChatResponse(BaseModel):
     blocked: bool
     routed_by: str
     used_llm: bool
+    cached: bool
     tools_called: list[str]
 
 
@@ -47,5 +48,6 @@ async def chat(request: Request, user: CurrentUser, body: ChatRequest) -> ChatRe
         blocked=result.blocked,
         routed_by=result.routed_by,
         used_llm=result.used_llm,
+        cached=result.cached,
         tools_called=result.tools_called,
     )

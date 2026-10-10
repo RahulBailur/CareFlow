@@ -286,6 +286,7 @@ class VoiceSession:
                 language=result.language,
                 routed_by=result.routed_by,
                 used_llm=result.used_llm,
+                cache_hit=result.cached,
                 blocked=result.blocked,
                 tools_called=result.tools_called,
                 stt_provider=self._stt.name,
@@ -301,6 +302,7 @@ class VoiceSession:
                     # Labels for whoever is measuring: which path this turn took
                     "routed_by": result.routed_by,
                     "used_llm": result.used_llm,
+                    "cache_hit": result.cached,
                     "stt_provider": self._stt.name,
                     "tts_provider": voice,
                 }

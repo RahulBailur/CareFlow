@@ -91,9 +91,8 @@ def report(label: str, turns: list[dict[str, Any]]) -> str:
             lines.append(f"{name:30} {stats['n']:>3} {p50:>7.2f} s {p95:>7.2f} s {worst:>7.2f} s")
     lines.append(f"spoken by: {count_by(turns, 'tts_provider')}")
     lines.append(f"routed by: {count_by(turns, 'routed_by')}")
-    lines.append(
-        f"answered with the LLM: {sum(1 for t in turns if t.get('used_llm'))}/{len(turns)}"
-    )
+    for label, key in (("with the LLM", "used_llm"), ("from the cache", "cache_hit")):
+        lines.append(f"answered {label}: {sum(1 for t in turns if t.get(key))}/{len(turns)}")
     return "\n".join(lines)
 
 

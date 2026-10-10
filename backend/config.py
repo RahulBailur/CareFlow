@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     jwt_expiry_hours: int = 24
     mongo_uri: str = "mongodb://localhost:27017/careflow"
     use_mock_db: bool = False
+    # Empty switches the response cache off; a Redis that is down only costs a warning
+    redis_url: str = ""
+    response_cache_ttl_s: int = 3600
     bcrypt_rounds: int = 12
     rate_limit_auth: str = "10/minute"
     rate_limit_chat: str = "20/minute"
