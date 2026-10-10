@@ -294,6 +294,16 @@ class VoiceSession:
                 barged_in=barged_in,
                 stages=stages,
             ).insert()
-            await self._send_json({"type": "timing", "stages": stages})
+            await self._send_json(
+                {
+                    "type": "timing",
+                    "stages": stages,
+                    # Labels for whoever is measuring: which path this turn took
+                    "routed_by": result.routed_by,
+                    "used_llm": result.used_llm,
+                    "stt_provider": self._stt.name,
+                    "tts_provider": voice,
+                }
+            )
         except Exception:
             logger.exception("Could not record turn analytics")
