@@ -92,5 +92,5 @@ explicit_package_bases = true
 exclude = ["\\.venv", "build"]
 
 [[tool.mypy.overrides]]
-module = ["slowapi.*", "mongomock_motor.*", "socketio.*", "fastembed.*", "faster_whisper.*", "onnxruntime.*", "piper.*", "huggingface_hub.*"]
+module = ["slowapi.*", "mongomock_motor.*", "socketio.*", "fastembed.*", "faster_whisper.*", "onnxruntime.*", "piper.*", "huggingface_hub.*", "ctranslate2.*"]
 ignore_missing_imports = true

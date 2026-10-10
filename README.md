@@ -230,7 +230,7 @@ Pipeline A is measured end to end, since its stages happen inside one model.
 
 ### 📊 Benchmarks
 
-> 🚧 **Baseline only so far.** Before/after numbers for each optimisation (for example, how much answering common questions without the LLM cuts time to first audio) are added as the work is done. That before/after table is the main deliverable of the project.
+> 🚧 **Work in progress.** Before/after numbers for each optimisation (for example, how much answering common questions without the LLM cuts time to first audio) are added as the work is done. That before/after table is the main deliverable of the project.
 
 #### Voice pipeline B — baseline (measured)
 
@@ -251,6 +251,22 @@ Pipeline A is measured end to end, since its stages happen inside one model.
 - **Every reply was spoken by Piper.** Gemini TTS was out of free quota (HTTP 429) for the whole run.
 - **The LLM is not steady on the free tier.** In an earlier three-turn check, plain Gemini requests took 4 to 11 s and time to first audio was 18 to 28 s.
 - The questions are synthesised speech, not recorded voices, and all in English. Hardware: an 8-thread laptop CPU, with the app in Docker Desktop on Windows.
+
+#### Optimisation 1 — give Whisper only the audio it needs (measured)
+
+Whisper pads every utterance to 30 seconds, and its encoder's cost follows the padded length, so a 2-second question cost as much as a 30-second one. The encoder now gets the utterance plus 5 seconds of quiet, and never less than 8 seconds. Same 19 questions, same hardware; raw numbers in [`stt-short-window.json`](backend/eval/results/stt-short-window.json).
+
+| Stage | Before P50 | After P50 | Before P95 | After P95 |
+|---|---:|---:|---:|---:|
+| Speech to text | 4.12 s | **1.02 s** | 7.75 s | 5.11 s |
+| **Time to first audio** | 7.94 s | **4.48 s** | 13.59 s | 12.71 s |
+
+- **Accuracy did not change on these clips**: 18 of 19 transcribed exactly, with either window.
+- **The window must not be tight.** With only 1 second of quiet after the speech, Whisper looped and repeated itself (word error rate above 100%), which is why the margin is 5 seconds.
+- **P95 barely moved, because it is one turn.** The first turn of each run is the slowest, in both runs; the other 18 turns took 2.6 to 8.3 s.
+- **What did not help:** thread count (4, 6 or 8), dropping timestamps, fixing the language, and a single decoding temperature all left the stage at about 4 s. Whisper `tiny` was faster but less accurate; `small` took about 20 s.
+- Hiss, hum and clicks that get past the voice-activity detector are now dropped by a confidence check, where Whisper used to invent a sentence for them.
+- Still about twice the 2.5 s target. The LLM, at about 2 s, is now the largest stage.
 
 #### Intent classifier (measured)
 

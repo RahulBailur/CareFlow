@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from eval.latency_bench import STAGES, count_by, percentile, report, summarise
 from scripts.make_eval_audio import audio_path, load_utterances, read_wav, write_wav
 from services.llm import MockLLM
+from services.stt import encode_window_seconds
 from tests.helpers import make_user
 from tests.test_chat import seed_hospital
 from tests.voice_helpers import UTTERANCE, FakeSTT, FakeTTS, Wire
@@ -112,3 +113,27 @@ async def test_the_timing_event_says_which_path_the_turn_took(client: AsyncClien
     assert event["routed_by"] == "keywords" and event["used_llm"] is False
     assert event["stt_provider"] == "fake-stt" and event["tts_provider"] == "fake-tts"
     assert "text" not in event and "transcript" not in event
+
+
+@pytest.mark.parametrize(
+    ("utterance_s", "expected"),
+    [
+        (0.5, 8.0),  # short questions get the minimum window
+        (3.0, 8.0),
+        (3.5, 8.5),  # from here the speech keeps its 5 s of quiet after it
+        (10.0, 15.0),
+        (25.0, 30.0),
+        (29.0, 30.0),  # never beyond what Whisper was trained on
+    ],
+)
+def test_the_encoder_window_fits_the_utterance_with_room_to_spare(
+    utterance_s: float, expected: float
+) -> None:
+    assert encode_window_seconds(utterance_s, 8.0) == expected
+
+
+def test_the_window_is_never_tight_around_the_speech() -> None:
+    """A tight window makes Whisper repeat itself: measured, not assumed."""
+    for tenths in range(1, 250):
+        seconds = tenths / 10
+        assert encode_window_seconds(seconds, 8.0) - seconds >= 5.0 - 1e-9

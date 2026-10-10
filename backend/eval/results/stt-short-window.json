@@ -1,0 +1,410 @@
+{
+  "label": "stt-short-window",
+  "measured_at": "2026-10-10T14:06:16+00:00",
+  "pipeline": "cascade",
+  "config": {
+    "whisper_model": "base",
+    "whisper_cpu_threads": 8,
+    "vad_silence_ms": 500,
+    "llm_provider": "gemini",
+    "llm_model": "gemini-3.5-flash-lite",
+    "tts_provider": "gemini",
+    "tts_chunking": "sentence"
+  },
+  "hardware": "8-thread laptop CPU; app in Docker Desktop (WSL 2) on Windows 11",
+  "summary": {
+    "end_of_speech_ms": {
+      "n": 19,
+      "p50": 549.4,
+      "p95": 656.6,
+      "min": 538.7,
+      "max": 656.6
+    },
+    "stt_ms": {
+      "n": 19,
+      "p50": 1015.2,
+      "p95": 5107.7,
+      "min": 786.7,
+      "max": 5107.7
+    },
+    "routing_ms": {
+      "n": 19,
+      "p50": 6.9,
+      "p95": 4003.0,
+      "min": 5.8,
+      "max": 4003.0
+    },
+    "llm_ms": {
+      "n": 19,
+      "p50": 2126.5,
+      "p95": 4485.5,
+      "min": 956.1,
+      "max": 4485.5
+    },
+    "tts_first_chunk_ms": {
+      "n": 19,
+      "p50": 523.0,
+      "p95": 2439.5,
+      "min": 245.3,
+      "max": 2439.5
+    },
+    "ttfa_ms": {
+      "n": 19,
+      "p50": 4475.1,
+      "p95": 12712.5,
+      "min": 2645.3,
+      "max": 12712.5
+    },
+    "total_ms": {
+      "n": 19,
+      "p50": 4713.1,
+      "p95": 13105.9,
+      "min": 3083.5,
+      "max": 13105.9
+    }
+  },
+  "turns": [
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 12762.4,
+      "stages": {
+        "end_of_speech_ms": 607.4,
+        "stt_ms": 5107.7,
+        "routing_ms": 72.4,
+        "llm_ms": 4485.5,
+        "tts_first_chunk_ms": 2439.5,
+        "ttfa_ms": 12712.5,
+        "total_ms": 13105.9
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-01"
+    },
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 4477.3,
+      "stages": {
+        "end_of_speech_ms": 540.7,
+        "stt_ms": 1074.1,
+        "routing_ms": 15.2,
+        "llm_ms": 2469.3,
+        "tts_first_chunk_ms": 375.8,
+        "ttfa_ms": 4475.1,
+        "total_ms": 4484.8
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-02"
+    },
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 4494.4,
+      "stages": {
+        "end_of_speech_ms": 653.5,
+        "stt_ms": 987.4,
+        "routing_ms": 6.9,
+        "llm_ms": 2690.5,
+        "tts_first_chunk_ms": 251.6,
+        "ttfa_ms": 4589.9,
+        "total_ms": 4809.3
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-03"
+    },
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 8322.4,
+      "stages": {
+        "end_of_speech_ms": 543.3,
+        "stt_ms": 942.7,
+        "routing_ms": 4003.0,
+        "llm_ms": 2126.0,
+        "tts_first_chunk_ms": 651.4,
+        "ttfa_ms": 8266.5,
+        "total_ms": 8270.4
+      },
+      "routed_by": "llm",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-04"
+    },
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 5065.9,
+      "stages": {
+        "end_of_speech_ms": 552.4,
+        "stt_ms": 1044.6,
+        "routing_ms": 6.6,
+        "llm_ms": 2089.8,
+        "tts_first_chunk_ms": 1357.9,
+        "ttfa_ms": 5051.2,
+        "total_ms": 5328.1
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-05"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 4978.9,
+      "stages": {
+        "end_of_speech_ms": 550.8,
+        "stt_ms": 1378.3,
+        "routing_ms": 11.0,
+        "llm_ms": 1730.9,
+        "tts_first_chunk_ms": 1283.0,
+        "ttfa_ms": 4954.1,
+        "total_ms": 6252.7
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-06"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 4864.5,
+      "stages": {
+        "end_of_speech_ms": 653.3,
+        "stt_ms": 1191.2,
+        "routing_ms": 9.1,
+        "llm_ms": 2442.5,
+        "tts_first_chunk_ms": 671.7,
+        "ttfa_ms": 4967.8,
+        "total_ms": 6045.3
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-07"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 3616.4,
+      "stages": {
+        "end_of_speech_ms": 651.3,
+        "stt_ms": 869.7,
+        "routing_ms": 7.0,
+        "llm_ms": 1856.0,
+        "tts_first_chunk_ms": 321.9,
+        "ttfa_ms": 3705.9,
+        "total_ms": 4257.7
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-08"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 4330.8,
+      "stages": {
+        "end_of_speech_ms": 656.6,
+        "stt_ms": 1098.9,
+        "routing_ms": 6.0,
+        "llm_ms": 2350.0,
+        "tts_first_chunk_ms": 308.7,
+        "ttfa_ms": 4420.2,
+        "total_ms": 5017.0
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-09"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 3959.0,
+      "stages": {
+        "end_of_speech_ms": 543.3,
+        "stt_ms": 1050.1,
+        "routing_ms": 6.5,
+        "llm_ms": 2126.5,
+        "tts_first_chunk_ms": 333.3,
+        "ttfa_ms": 4059.7,
+        "total_ms": 4577.6
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-10"
+    },
+    {
+      "intent": "records",
+      "client_ttfa_ms": 5014.9,
+      "stages": {
+        "end_of_speech_ms": 542.6,
+        "stt_ms": 814.7,
+        "routing_ms": 6.3,
+        "llm_ms": 1895.8,
+        "tts_first_chunk_ms": 1678.1,
+        "ttfa_ms": 4937.5,
+        "total_ms": 4989.2
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-11"
+    },
+    {
+      "intent": "records",
+      "client_ttfa_ms": 4857.8,
+      "stages": {
+        "end_of_speech_ms": 544.3,
+        "stt_ms": 1022.5,
+        "routing_ms": 6.2,
+        "llm_ms": 2164.1,
+        "tts_first_chunk_ms": 1093.4,
+        "ttfa_ms": 4830.5,
+        "total_ms": 4846.6
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-12"
+    },
+    {
+      "intent": "records",
+      "client_ttfa_ms": 4237.8,
+      "stages": {
+        "end_of_speech_ms": 561.3,
+        "stt_ms": 1015.2,
+        "routing_ms": 6.5,
+        "llm_ms": 2194.5,
+        "tts_first_chunk_ms": 439.8,
+        "ttfa_ms": 4217.3,
+        "total_ms": 4217.9
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-13"
+    },
+    {
+      "intent": "support",
+      "client_ttfa_ms": 4731.3,
+      "stages": {
+        "end_of_speech_ms": 547.0,
+        "stt_ms": 982.0,
+        "routing_ms": 7.7,
+        "llm_ms": 2803.5,
+        "tts_first_chunk_ms": 366.3,
+        "ttfa_ms": 4706.5,
+        "total_ms": 4713.1
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-14"
+    },
+    {
+      "intent": "support",
+      "client_ttfa_ms": 3703.7,
+      "stages": {
+        "end_of_speech_ms": 549.4,
+        "stt_ms": 833.2,
+        "routing_ms": 5.8,
+        "llm_ms": 2013.6,
+        "tts_first_chunk_ms": 304.6,
+        "ttfa_ms": 3706.6,
+        "total_ms": 3706.9
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-15"
+    },
+    {
+      "intent": "support",
+      "client_ttfa_ms": 3881.6,
+      "stages": {
+        "end_of_speech_ms": 538.7,
+        "stt_ms": 836.7,
+        "routing_ms": 6.3,
+        "llm_ms": 1947.4,
+        "tts_first_chunk_ms": 537.8,
+        "ttfa_ms": 3867.0,
+        "total_ms": 3868.3
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-16"
+    },
+    {
+      "intent": "support",
+      "client_ttfa_ms": 4368.3,
+      "stages": {
+        "end_of_speech_ms": 547.8,
+        "stt_ms": 1063.6,
+        "routing_ms": 9.1,
+        "llm_ms": 2203.4,
+        "tts_first_chunk_ms": 523.0,
+        "ttfa_ms": 4346.8,
+        "total_ms": 4347.5
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-17"
+    },
+    {
+      "intent": "general",
+      "client_ttfa_ms": 4175.8,
+      "stages": {
+        "end_of_speech_ms": 546.0,
+        "stt_ms": 1003.9,
+        "routing_ms": 7.6,
+        "llm_ms": 1579.1,
+        "tts_first_chunk_ms": 1028.5,
+        "ttfa_ms": 4165.1,
+        "total_ms": 4168.1
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-18"
+    },
+    {
+      "intent": "general",
+      "client_ttfa_ms": 2545.7,
+      "stages": {
+        "end_of_speech_ms": 650.6,
+        "stt_ms": 786.7,
+        "routing_ms": 6.6,
+        "llm_ms": 956.1,
+        "tts_first_chunk_ms": 245.3,
+        "ttfa_ms": 2645.3,
+        "total_ms": 3083.5
+      },
+      "routed_by": "keywords",
+      "used_llm": true,
+      "stt_provider": "faster-whisper:base",
+      "tts_provider": "piper",
+      "utterance": "en-19"
+    }
+  ]
+}
