@@ -1,0 +1,75 @@
+{"id": "en-01", "lang": "en", "intent": "booking", "text": "I want to book an appointment with a cardiologist tomorrow"}
+{"id": "en-02", "lang": "en", "intent": "booking", "text": "Can you cancel my appointment for Friday?"}
+{"id": "en-03", "lang": "en", "intent": "booking", "text": "Please move my appointment to next Monday morning"}
+{"id": "en-04", "lang": "en", "intent": "booking", "text": "Is Dr. Asha Rao free this Thursday?"}
+{"id": "en-05", "lang": "en", "intent": "booking", "text": "I need to see a skin doctor this week"}
+{"id": "en-06", "lang": "en", "intent": "triage", "text": "I have had chest pain since last night, which department should I go to?"}
+{"id": "en-07", "lang": "en", "intent": "triage", "text": "My son has a rash and high fever"}
+{"id": "en-08", "lang": "en", "intent": "triage", "text": "My knee hurts when I climb stairs"}
+{"id": "en-09", "lang": "en", "intent": "triage", "text": "I keep getting ear pain and I can't hear properly"}
+{"id": "en-10", "lang": "en", "intent": "triage", "text": "I've been feeling dizzy and nauseous since morning"}
+{"id": "en-11", "lang": "en", "intent": "records", "text": "Show me my last prescription"}
+{"id": "en-12", "lang": "en", "intent": "records", "text": "When was my last visit to the hospital?"}
+{"id": "en-13", "lang": "en", "intent": "records", "text": "What medicines did the doctor give me last time?"}
+{"id": "en-14", "lang": "en", "intent": "support", "text": "What are the OPD timings?"}
+{"id": "en-15", "lang": "en", "intent": "support", "text": "Where is the cardiology department?"}
+{"id": "en-16", "lang": "en", "intent": "support", "text": "What is the emergency contact number?"}
+{"id": "en-17", "lang": "en", "intent": "support", "text": "Is the hospital open on Sunday?"}
+{"id": "en-18", "lang": "en", "intent": "general", "text": "Thank you, that's all"}
+{"id": "en-19", "lang": "en", "intent": "general", "text": "Hello, who are you?"}
+{"id": "hi-01", "lang": "hi", "intent": "booking", "text": "मुझे कल डॉक्टर से मिलने का समय चाहिए"}
+{"id": "hi-02", "lang": "hi", "intent": "booking", "text": "मेरा अपॉइंटमेंट रद्द कर दीजिए"}
+{"id": "hi-03", "lang": "hi", "intent": "booking", "text": "क्या मैं अपना अपॉइंटमेंट अगले हफ्ते कर सकता हूँ?"}
+{"id": "hi-04", "lang": "hi", "intent": "booking", "text": "हड्डी के डॉक्टर का अपॉइंटमेंट बुक करना है"}
+{"id": "hi-05", "lang": "hi", "intent": "booking", "text": "डॉक्टर विक्रम शेट्टी कब उपलब्ध हैं?"}
+{"id": "hi-06", "lang": "hi", "intent": "triage", "text": "मुझे दो दिन से तेज़ बुखार और खांसी है"}
+{"id": "hi-07", "lang": "hi", "intent": "triage", "text": "मेरे सीने में दर्द हो रहा है, किस विभाग में जाऊँ?"}
+{"id": "hi-08", "lang": "hi", "intent": "triage", "text": "बच्चे के पेट में दर्द है और उल्टी हो रही है"}
+{"id": "hi-09", "lang": "hi", "intent": "triage", "text": "मेरी त्वचा पर खुजली और लाल दाने हैं"}
+{"id": "hi-10", "lang": "hi", "intent": "records", "text": "मेरी पिछली पर्ची दिखाइए"}
+{"id": "hi-11", "lang": "hi", "intent": "records", "text": "मैं पिछली बार अस्पताल कब आया था?"}
+{"id": "hi-12", "lang": "hi", "intent": "records", "text": "डॉक्टर ने पिछली बार कौन सी दवा लिखी थी?"}
+{"id": "hi-13", "lang": "hi", "intent": "support", "text": "ओपीडी का समय क्या है?"}
+{"id": "hi-14", "lang": "hi", "intent": "support", "text": "बच्चों का विभाग कहाँ है?"}
+{"id": "hi-15", "lang": "hi", "intent": "support", "text": "आपातकालीन नंबर क्या है?"}
+{"id": "hi-16", "lang": "hi", "intent": "general", "text": "धन्यवाद"}
+{"id": "kn-01", "lang": "kn", "intent": "booking", "text": "ನಾಳೆ ಡಾಕ್ಟರ್ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಬುಕ್ ಮಾಡಿ"}
+{"id": "kn-02", "lang": "kn", "intent": "booking", "text": "ನನ್ನ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ರದ್ದು ಮಾಡಿ"}
+{"id": "kn-03", "lang": "kn", "intent": "booking", "text": "ನನ್ನ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಮುಂದಿನ ವಾರಕ್ಕೆ ಬದಲಾಯಿಸಿ"}
+{"id": "kn-04", "lang": "kn", "intent": "booking", "text": "ಹೃದಯ ತಜ್ಞರನ್ನು ಭೇಟಿಯಾಗಲು ಸಮಯ ಬೇಕು"}
+{"id": "kn-05", "lang": "kn", "intent": "booking", "text": "ಡಾಕ್ಟರ್ ಆಶಾ ರಾವ್ ಯಾವಾಗ ಸಿಗುತ್ತಾರೆ?"}
+{"id": "kn-06", "lang": "kn", "intent": "triage", "text": "ನನಗೆ ಎರಡು ದಿನದಿಂದ ಜ್ವರ ಮತ್ತು ಕೆಮ್ಮು ಇದೆ"}
+{"id": "kn-07", "lang": "kn", "intent": "triage", "text": "ನನಗೆ ಎದೆ ನೋವು ಇದೆ, ಯಾವ ವಿಭಾಗಕ್ಕೆ ಹೋಗಬೇಕು?"}
+{"id": "kn-08", "lang": "kn", "intent": "triage", "text": "ಮಗುವಿಗೆ ಹೊಟ್ಟೆ ನೋವು ಮತ್ತು ವಾಂತಿ ಆಗುತ್ತಿದೆ"}
+{"id": "kn-09", "lang": "kn", "intent": "triage", "text": "ನನ್ನ ಮೊಣಕಾಲು ತುಂಬಾ ನೋಯುತ್ತಿದೆ"}
+{"id": "kn-10", "lang": "kn", "intent": "records", "text": "ನನ್ನ ಹಿಂದಿನ ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್ ತೋರಿಸಿ"}
+{"id": "kn-11", "lang": "kn", "intent": "records", "text": "ನಾನು ಕೊನೆಯ ಬಾರಿ ಆಸ್ಪತ್ರೆಗೆ ಯಾವಾಗ ಬಂದಿದ್ದೆ?"}
+{"id": "kn-12", "lang": "kn", "intent": "records", "text": "ಡಾಕ್ಟರ್ ಕಳೆದ ಬಾರಿ ಯಾವ ಔಷಧಿ ಕೊಟ್ಟಿದ್ದರು?"}
+{"id": "kn-13", "lang": "kn", "intent": "support", "text": "ಓಪಿಡಿ ಸಮಯ ಏನು?"}
+{"id": "kn-14", "lang": "kn", "intent": "support", "text": "ಮಕ್ಕಳ ವಿಭಾಗ ಎಲ್ಲಿದೆ?"}
+{"id": "kn-15", "lang": "kn", "intent": "support", "text": "ತುರ್ತು ಸಂಪರ್ಕ ಸಂಖ್ಯೆ ಏನು?"}
+{"id": "kn-16", "lang": "kn", "intent": "general", "text": "ಧನ್ಯವಾದಗಳು"}
+{"id": "mx-01", "lang": "mixed", "intent": "booking", "text": "kal ka appointment cancel karo"}
+{"id": "mx-02", "lang": "mixed", "intent": "booking", "text": "mujhe Dr. Meera Iyer ke saath appointment book karna hai"}
+{"id": "mx-03", "lang": "mixed", "intent": "booking", "text": "mera appointment Friday ko shift kar do"}
+{"id": "mx-04", "lang": "mixed", "intent": "booking", "text": "nale doctor appointment beku"}
+{"id": "mx-05", "lang": "mixed", "intent": "booking", "text": "nanna appointment cancel maadi"}
+{"id": "mx-06", "lang": "mixed", "intent": "booking", "text": "skin doctor ka slot available hai kya Saturday ko?"}
+{"id": "mx-07", "lang": "mixed", "intent": "booking", "text": "appointment next week ge change maadi"}
+{"id": "mx-08", "lang": "mixed", "intent": "triage", "text": "mujhe subah se sir dard aur chakkar aa raha hai"}
+{"id": "mx-09", "lang": "mixed", "intent": "triage", "text": "pet mein bahut dard hai, kaunse doctor ko dikhau?"}
+{"id": "mx-10", "lang": "mixed", "intent": "triage", "text": "nanage thumba jwara ide, yaava department ge hogbeku?"}
+{"id": "mx-11", "lang": "mixed", "intent": "triage", "text": "bacche ko khansi aur bukhar hai"}
+{"id": "mx-12", "lang": "mixed", "intent": "triage", "text": "kaan mein dard ho raha hai"}
+{"id": "mx-13", "lang": "mixed", "intent": "triage", "text": "nanage ede novu ide"}
+{"id": "mx-14", "lang": "mixed", "intent": "records", "text": "meri last prescription dikhao"}
+{"id": "mx-15", "lang": "mixed", "intent": "records", "text": "pichli baar doctor ne kya dawai di thi?"}
+{"id": "mx-16", "lang": "mixed", "intent": "records", "text": "nanna hindina visit yaavaga aagittu?"}
+{"id": "mx-17", "lang": "mixed", "intent": "records", "text": "mera visit history batao"}
+{"id": "mx-18", "lang": "mixed", "intent": "support", "text": "OPD timing kya hai?"}
+{"id": "mx-19", "lang": "mixed", "intent": "support", "text": "cardiology department kahan hai?"}
+{"id": "mx-20", "lang": "mixed", "intent": "support", "text": "emergency number enu?"}
+{"id": "mx-21", "lang": "mixed", "intent": "support", "text": "hospital Sunday ko khula hai kya?"}
+{"id": "mx-22", "lang": "mixed", "intent": "support", "text": "pediatrics department ellide?"}
+{"id": "mx-23", "lang": "mixed", "intent": "general", "text": "theek hai, shukriya"}
+{"id": "mx-24", "lang": "mixed", "intent": "general", "text": "namaste"}

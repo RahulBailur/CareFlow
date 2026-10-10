@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     rate_limit_auth: str = "10/minute"
     seed_default_password: str = ""
     frontend_build_dir: str = "../frontend/build"
+    # Empty switches the embedding stage of the intent classifier off
+    intent_embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
     @model_validator(mode="after")
     def _check_runtime(self) -> Self:

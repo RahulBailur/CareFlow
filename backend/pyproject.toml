@@ -21,6 +21,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Sentence embeddings for the intent classifier (ONNX on CPU, no PyTorch)
+ml = [
+    "fastembed>=0.7",
+]
 dev = [
     "pytest>=8",
     "pytest-asyncio>=0.24",
@@ -42,7 +46,7 @@ py-modules = [
     "sockets",
     "time_utils",
 ]
-packages = ["models", "routes", "scripts", "services"]
+packages = ["agents", "eval", "models", "routes", "scripts", "services"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -67,6 +71,7 @@ select = ["E", "F", "I", "UP", "B", "ASYNC", "S"]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "S105", "S106"]
 "scripts/dev_server.py" = ["T201"]
+"eval/*" = ["T201"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -78,5 +83,5 @@ explicit_package_bases = true
 exclude = ["\\.venv", "build"]
 
 [[tool.mypy.overrides]]
-module = ["slowapi.*", "mongomock_motor.*", "socketio.*"]
+module = ["slowapi.*", "mongomock_motor.*", "socketio.*", "fastembed.*"]
 ignore_missing_imports = true
