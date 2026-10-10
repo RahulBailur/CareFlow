@@ -20,6 +20,8 @@ class TurnAnalytics(Document):
     routed_by: str
     used_llm: bool
     cache_hit: bool = False
+    # The fallback tier that answered: "cache", a model's name, or "rules"
+    answered_by: str = ""
     blocked: bool
     tools_called: list[str]
     stt_provider: str

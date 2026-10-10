@@ -15,6 +15,7 @@ from tools.confirmation import drop_proposals
 logger = logging.getLogger(__name__)
 
 MAX_TOOL_ROUNDS = 4
+RULES = "rules"  # the last tier: no model answered
 
 LANGUAGE_NAMES: dict[Language, str] = {"en": "English", "hi": "Hindi", "kn": "Kannada"}
 
@@ -59,6 +60,8 @@ class AgentReply:
     tools_called: list[str] = field(default_factory=list)
     # What the tools did or proposed this turn, for conversation memory
     notes: list[str] = field(default_factory=list)
+    # Which tier produced the reply: a model's name, or "rules"
+    answered_by: str = RULES
 
 
 def system_prompt(
@@ -101,10 +104,17 @@ async def run_agent(
             response = await llm.generate(prompt, messages, specs)
             if not response.tool_calls:
                 if response.text.strip():
-                    return AgentReply(response.text.strip(), True, called, notes)
+                    tier = response.provider or llm.name
+                    return AgentReply(response.text.strip(), True, called, notes, tier)
                 break
             messages.append(
-                Message("assistant", response.text, response.tool_calls, raw=response.raw)
+                Message(
+                    "assistant",
+                    response.text,
+                    response.tool_calls,
+                    raw=response.raw,
+                    provider=response.provider,
+                )
             )
             if progress:
                 await progress("tool")

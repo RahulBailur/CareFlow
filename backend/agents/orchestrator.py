@@ -62,6 +62,8 @@ class TurnResult:
     blocked: bool = False
     tools_called: list[str] = field(default_factory=list)
     cached: bool = False  # answered from the response cache, with no agent run
+    # The tier that produced the reply: "cache", a model's name, or "rules"
+    answered_by: str = "rules"
 
 
 async def _cache_key(
@@ -140,6 +142,7 @@ async def run_text_turn(
             routed_by=routed_by,
             used_llm=False,
             cached=True,
+            answered_by="cache",
         )
         await expire_older_proposals(context)
         await memory.remember(user.id, session_id, text, result.reply, intent)
@@ -156,6 +159,7 @@ async def run_text_turn(
         routed_by=routed_by,
         used_llm=answer.used_llm or routed_by == "llm",
         tools_called=answer.tools_called,
+        answered_by=answer.answered_by,
     )
     if intent == Intent.TRIAGE:
         guarded = guard_triage_reply(answer.text, result.reply_language)

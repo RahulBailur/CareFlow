@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     llm_provider: Literal["gemini", "ollama", "mock"] = "mock"
     gemini_api_key: str = ""
     gemini_text_model: str = ""
+    # A request slower than this counts as failed, and the next tier answers
+    llm_timeout_s: float = 8.0
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = ""  # empty = no local tier
+    ollama_timeout_s: float = 30.0
+    # After this many failures in a row a provider is skipped for the cool-down
+    gemini_breaker_threshold: int = 3
+    gemini_breaker_cooldown_s: float = 60.0
     gemini_tts_model: str = ""
     # Voice. The safe defaults need no model; real runs set these in .env
     stt_provider: Literal["faster_whisper", "mock"] = "mock"

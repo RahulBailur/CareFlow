@@ -194,8 +194,10 @@ flowchart TD
     KB --> DONE
 ```
 
-- **Circuit breaker** — after 3 consecutive Gemini `429`s, Gemini is skipped for 60 seconds instead of failing every request
-- Every turn records which tier answered; the fallback rate appears on the analytics page
+- **Circuit breaker** — after 3 failures in a row (quota errors, timeouts or server errors), a provider is skipped for 60 seconds with no request made, then tried again
+- **Timeout** — a model request slower than 8 seconds counts as failed, and the next tier answers
+- Every turn records which tier answered (`cache`, `gemini`, `ollama` or `rules`); the fallback rate will appear on the analytics page
+- **Status:** the text and cascaded-voice tiers are built. Checked live with Gemini pointed at a model that does not exist: three failed requests opened the circuit, and every later turn was answered by rules in about 0.05 s. The Ollama tier is tested against a stand-in server only; the development laptop does not have the memory to run it
 - When a Live session hits its duration limit, the client reconnects and conversation memory carries the context across
 
 ---
