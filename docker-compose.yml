@@ -16,6 +16,8 @@ services:
       USE_MOCK_DB: "false"
     ports:
       - "8000:8000"
+    volumes:
+      - models:/models
     depends_on:
       mongo:
         condition: service_healthy
@@ -58,4 +60,5 @@ services:
 
 volumes:
   mongo_data:
+  models:
   ollama_data:

@@ -14,6 +14,11 @@ os.environ["FRONTEND_BUILD_DIR"] = "no-frontend-build-in-tests"
 os.environ["LLM_PROVIDER"] = "mock"
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["INTENT_EMBEDDING_MODEL"] = ""
+os.environ["STT_PROVIDER"] = "mock"
+os.environ["TTS_PROVIDER"] = "mock"
+os.environ["VAD_PROVIDER"] = "energy"
+os.environ["VAD_SILENCE_MS"] = "200"
+os.environ["RATE_LIMIT_VOICE_SESSIONS"] = "3/minute"
 os.environ["RATE_LIMIT_CHAT"] = "1000/minute"
 
 import pytest  # noqa: E402

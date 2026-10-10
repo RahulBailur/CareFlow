@@ -40,7 +40,7 @@
 > CareFlow uses synthetic data only. The Gemini free tier allows Google to use submitted content to improve its products, so no real patient data or real voice recordings belong here.
 
 > [!NOTE]
-> **Project status:** milestones **M1** and **M2** are complete: login, booking, visit history, the live queue and the doctor's queue controls, running in Docker Compose with MongoDB and Redis. Patients can chat with CareBot in the app by text, in English, Hindi or Kannada, through four specialist agents. Voice is still to come. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
+> **Project status:** milestones **M1** and **M2** are complete: login, booking, visit history, the live queue and the doctor's queue controls, running in Docker Compose with MongoDB and Redis. Patients can chat with CareBot in the app by text, in English, Hindi or Kannada, through four specialist agents. The cascaded voice pipeline works on the server (speech in, spoken reply out, with barge-in) but is slow and has no microphone button in the app yet. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
 
 ## 💡 The Problem
 
@@ -230,7 +230,26 @@ Pipeline A is measured end to end, since its stages happen inside one model.
 
 ### 📊 Benchmarks
 
-> 🚧 **Not measured yet.** This section will hold the actual P50 / P95 per stage, the hardware used, and before/after numbers for each optimisation (for example, how much TTS sentence streaming cuts TTFA). That before/after table is the main deliverable of the project.
+> 🚧 **First baseline only.** P50 / P95 over many turns, and before/after numbers for each optimisation (for example, how much TTS sentence streaming cuts TTFA), come with the latency benchmark in M4. That before/after table is the main deliverable of the project.
+
+#### Voice pipeline B — first baseline (measured)
+
+Three spoken English questions sent to the app over the voice WebSocket, before any optimisation. The questions were synthesised speech, not recorded voices.
+
+| Stage | Turn 1 | Turn 2 | Turn 3 |
+|---|---:|---:|---:|
+| End-of-speech detection | 0.5 s | 0.5 s | 0.5 s |
+| Speech to text (Whisper `base`) | 8.7 s | 6.3 s | 3.6 s |
+| Routing | 0.2 s | 0.05 s | 0.01 s |
+| LLM, tool call included | 13.9 s | 15.4 s | 13.4 s |
+| TTS first chunk (Piper) | 4.4 s | 3.6 s | 0.5 s |
+| **Time to first audio** | **27.7 s** | **25.9 s** | **18.1 s** |
+
+- **This is far from the 2.5 s target**, and it is three turns, not a P50 or P95. It is the "before" column that the optimisation work in M4 starts from.
+- **The LLM was the largest part.** A plain Gemini request with no tools took 4 to 11 s on the free tier that day, and each of these turns made two.
+- **Whisper `small`, the planned model, was too slow here**: 10 to 20 s per utterance on this laptop, against about 3 s for `base` outside Docker. `base` mis-heard "cardiology" once and still routed correctly.
+- **Gemini TTS ran out of free quota** (HTTP 429) after a handful of requests, so every reply above was spoken by the local Piper fallback.
+- Hardware: an 8-thread laptop CPU, with the app in Docker Desktop on Windows.
 
 #### Intent classifier (measured)
 
@@ -293,7 +312,7 @@ Every component is free-tier or open source.
 | **LLM** | Gemini Flash / Flash-Lite · Ollama (offline fallback) |
 | **Real-time voice** | Gemini Live API (native audio) |
 | **Intent classifier** | Keyword rules + a multilingual sentence-transformers model run through fastembed (ONNX, local CPU) |
-| **VAD / STT / TTS** | Silero VAD · faster-whisper · Gemini Flash TTS · Piper |
+| **VAD / STT / TTS** | Silero VAD · faster-whisper · Gemini Flash TTS · Piper (local, English; GPL-3.0, optional) |
 | **Observability** | structlog · Langfuse (optional, self-hosted) |
 | **Testing** | pytest · httpx · Vitest · React Testing Library · Locust |
 | **Quality** | ruff · mypy · ESLint · Prettier · pre-commit · gitleaks |
@@ -360,7 +379,8 @@ docker compose exec ollama ollama pull <small-instruct-model>
 | `LLM_PROVIDER` | Which LLM backend to use. `mock` means no model: CareBot answers from rules only | `gemini` · `mock` |
 | `GEMINI_API_KEY` | Free key from Google AI Studio | — |
 | `VOICE_PIPELINE_DEFAULT` | Pipeline used on first load | `live` · `cascade` |
-| `WHISPER_MODEL` | faster-whisper model size | `small` |
+| `STT_PROVIDER` / `TTS_PROVIDER` / `VAD_PROVIDER` | Which speech components to use; the mock ones need no model | `faster_whisper` / `gemini` / `silero` |
+| `WHISPER_MODEL` | faster-whisper model size | `small` · `base` |
 | `VAD_SILENCE_MS` | Silence before end-of-speech | `500` |
 | `GEMINI_BREAKER_THRESHOLD` | Consecutive `429`s before the breaker opens | `3` |
 | `GEMINI_BREAKER_COOLDOWN_S` | Seconds Gemini is skipped | `60` |
@@ -413,7 +433,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 |:---:|---|---|:---:|
 | ✅ | **M1 — Foundation** | Repo, Docker Compose, CI, pre-commit, models, auth, seed data, demo banner | `v0.1.0` |
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
-| 🚧 | **M3 — Agents & Pipeline B** | Intent classifier, guardrails + tests, eval set, specialist agents, text chat in the app ✅ · cascaded voice pipeline, barge-in ⬜ | `v0.3.0` |
+| 🚧 | **M3 — Agents & Pipeline B** | Intent classifier, guardrails + tests, eval set, specialist agents, text chat in the app, cascaded voice pipeline with barge-in on the server ✅ · microphone and playback in the app ⬜ | `v0.3.0` |
 | ⬜ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
 | ⬜ | **M5 — Analytics & demo** | Analytics page, demo deployment, benchmarks, demo GIF, "hardest problem" write-up | `v0.5.0` |
 
