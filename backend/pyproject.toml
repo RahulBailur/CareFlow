@@ -20,6 +20,7 @@ dependencies = [
     "python-socketio>=5.11",
     "httpx>=0.27",
     "numpy>=2.0",
+    "redis>=5",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,7 @@ dev = [
     "pytest-asyncio>=0.24",
     "mongomock-motor>=0.0.34",
     "aiohttp>=3.10",  # Socket.IO test client
+    "fakeredis>=2.26",
     "ruff>=0.6.9",
     "mypy>=1.11",
 ]
@@ -92,5 +94,5 @@ explicit_package_bases = true
 exclude = ["\\.venv", "build"]
 
 [[tool.mypy.overrides]]
-module = ["slowapi.*", "mongomock_motor.*", "socketio.*", "fastembed.*", "faster_whisper.*", "onnxruntime.*", "piper.*", "huggingface_hub.*"]
+module = ["slowapi.*", "mongomock_motor.*", "socketio.*", "fastembed.*", "faster_whisper.*", "onnxruntime.*", "piper.*", "huggingface_hub.*", "ctranslate2.*", "fakeredis.*"]
 ignore_missing_imports = true

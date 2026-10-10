@@ -17,16 +17,19 @@ from agents.intent_classifier import (
     Language,
     get_classifier,
     keyword_scores,
+    normalise,
 )
 from agents.intent_data import Intent
 from agents.records_agent import RECORDS_AGENT
-from agents.support_agent import SUPPORT_AGENT
+from agents.support_agent import SUPPORT_AGENT, facts_fingerprint, topic
 from agents.triage_agent import TRIAGE_AGENT
 from memory import conversation_memory as memory
 from models.user import User
 from services.llm import LLMProvider, LLMUnavailable, Message, get_llm
+from services.redis_client import ResponseCache, get_response_cache, reply_key
 from tools import ToolContext
 from tools.confirmation import expire_older_proposals
+from tools.support_tools import get_hospital_info
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +61,24 @@ class TurnResult:
     disclaimer: str | None = None
     blocked: bool = False
     tools_called: list[str] = field(default_factory=list)
+    cached: bool = False  # answered from the response cache, with no agent run
+
+
+async def _cache_key(
+    intent: Intent, routed_by: Routing, text: str, context: ToolContext
+) -> str | None:
+    """The cache key for this turn, or None if its reply must not be shared.
+
+    Shared replies are only those about the hospital itself, to a question that says
+    what it is asking (so the answer does not depend on the conversation), routed
+    without the LLM. Anything about a patient is never cached.
+    """
+    if intent != Intent.SUPPORT or routed_by not in ("keywords", "embedding"):
+        return None
+    info = await get_hospital_info(context, {})
+    if "error" in info or topic(text, info) is None:
+        return None
+    return reply_key(normalise(text), context.language, facts_fingerprint(info))
 
 
 async def _route(
@@ -91,6 +112,7 @@ async def run_text_turn(
     llm: LLMProvider | None = None,
     classifier: IntentClassifier | None = None,
     progress: Progress | None = None,
+    cache: ResponseCache | None = None,
 ) -> TurnResult:
     assert user.id is not None  # noqa: S101 — loaded from the database
     llm = llm or get_llm()
@@ -107,6 +129,22 @@ async def run_text_turn(
         session_id=session_id,
         turn_id=secrets.token_hex(8),
     )
+    cache = cache or get_response_cache()
+    key = await _cache_key(intent, routed_by, text, context) if cache.enabled else None
+    if key and (hit := await cache.get(key)):
+        result = TurnResult(
+            reply=hit["reply"],
+            intent=intent,
+            language=local.language,
+            reply_language=hit["reply_language"],
+            routed_by=routed_by,
+            used_llm=False,
+            cached=True,
+        )
+        await expire_older_proposals(context)
+        await memory.remember(user.id, session_id, text, result.reply, intent)
+        return result
+
     answer = await run_agent(AGENTS[intent], context, text, history, llm, progress)
     await expire_older_proposals(context)
 
@@ -127,5 +165,8 @@ async def run_text_turn(
             guarded.blocked,
         )
 
+    # Only the LLM's wording is worth keeping: a rule-based reply costs nothing to redo
+    if key and answer.used_llm:
+        await cache.set(key, {"reply": result.reply, "reply_language": result.reply_language})
     await memory.remember(user.id, session_id, text, result.reply, intent, "; ".join(answer.notes))
     return result
