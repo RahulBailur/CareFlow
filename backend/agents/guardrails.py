@@ -100,7 +100,8 @@ _PATTERNS: list[tuple[Violation, re.Pattern[str]]] = [
     (
         Violation.PRESCRIPTION,
         re.compile(
-            r"\b(goli|dawai?|davai|tablet|syrup) (\w+ )?(le|lo|lena|lijiye|kha|khao|khana|khaiye)\b|"
+            r"\b(goli|dawai?|davai|tablet|syrup) (\w+ )?"
+            r"(le|lo|lena|lijiye|kha|khao|khana|khaiye)\b|"
             r"\b(maa?tre|tablet|aushadhi|syrup) (\w+ )?(tago+l+i|togo+l+i|tegedukol+i|sevisi)\b"
         ),
     ),
