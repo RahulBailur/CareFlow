@@ -40,7 +40,7 @@
 > CareFlow uses synthetic data only. The Gemini free tier allows Google to use submitted content to improve its products, so no real patient data or real voice recordings belong here.
 
 > [!NOTE]
-> **Project status:** milestones **M1** and **M2** are complete: login, booking, visit history, the live queue and the doctor's queue controls, running in Docker Compose with MongoDB and Redis. Patients can chat with CareBot in the app by text, in English, Hindi or Kannada, through four specialist agents. Patients can also talk to CareBot: **Start voice** in the chat window streams the microphone to the cascaded voice pipeline and plays the spoken reply. It works, but it is slow (see Benchmarks). The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
+> **Project status:** milestones **M1** and **M2** are complete: login, booking, visit history, the live queue and the doctor's queue controls, running in Docker Compose with MongoDB and Redis. Patients can chat with CareBot in the app by text, in English, Hindi or Kannada, through four specialist agents. Patients can also talk to CareBot: **Start voice** in the chat window uses the real-time Gemini Live pipeline (first audio in about 2.3 s), with the cascaded pipeline as a selectable alternative and automatic fallback. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
 
 ## 💡 The Problem
 
@@ -211,7 +211,7 @@ The headline number is **time to first audio (TTFA)**: the user stops speaking �
 | TTFA P50 | < 1.5 s | < 2.5 s |
 | TTFA P95 | < 2.5 s | < 4.0 s |
 
-These are **targets, not results**. They will be measured on a laptop CPU over a home connection.
+These are **targets**. What was measured, on a laptop CPU over a home connection, is under [Benchmarks](#-benchmarks): Pipeline A reaches 2.29 s at P50, Pipeline B 4.03 s.
 
 <details>
 <summary><b>Pipeline B latency budget — stage by stage</b></summary>
@@ -233,6 +233,21 @@ Pipeline A is measured end to end, since its stages happen inside one model.
 ### 📊 Benchmarks
 
 > 🚧 **Work in progress.** Before/after numbers for each optimisation (for example, how much answering common questions without the LLM cuts time to first audio) are added as the work is done. That before/after table is the main deliverable of the project.
+
+#### Pipeline A against Pipeline B (measured)
+
+The same 19 spoken English questions through each pipeline, on the same hardware. Pipeline A is measured end to end, because its stages happen inside one model; its figure includes the 300 ms for which reply audio is held so its transcript can be checked first. Raw numbers: [`pipeline-a-live.json`](backend/eval/results/pipeline-a-live.json), [`preload-facts.json`](backend/eval/results/preload-facts.json).
+
+| Time to first audio | P50 | P95 | Target P50 | Target P95 |
+|---|---:|---:|---:|---:|
+| 🅰️ Pipeline A — Gemini Live | **2.29 s** | **3.29 s** | 1.5 s | 2.5 s |
+| 🅱️ Pipeline B — cascaded, after the optimisations below | 4.03 s | 22.36 s | 2.5 s | 4.0 s |
+| 🅱️ Pipeline B — baseline | 7.94 s | 13.59 s | | |
+
+- **Pipeline A is the faster of the two by about 1.7 s at the median, and it misses its own target** by about 0.8 s. Every one of its 19 turns took between 1.5 and 3.3 s.
+- **Pipeline A is far steadier.** Pipeline B's P95 is one turn in which a Gemini text request hung to its timeout; that run predates the 8 s timeout and the circuit breaker.
+- All 19 Pipeline A turns were answered and spoken by Gemini Live, with no fallback.
+- With 19 turns, each P95 is that run's slowest turn. The questions are synthesised speech, in English only.
 
 #### Voice pipeline B — baseline (measured)
 
@@ -333,6 +348,7 @@ Guardrails are enforced **in code, not only in prompts**, and each one has a tes
 
 | Rule | How it is enforced |
 |---|---|
+| 🎙️ The same rules in speech-to-speech | In Pipeline A the model's own transcript of what it is saying is checked as it arrives, and reply audio is held 300 ms so the check comes first; a violating reply is cut off and the safe fallback is spoken instead. Tools still run on the server as the session's user |
 | 🩺 Triage never diagnoses, prescribes or gives dosage | System prompt **plus** a pattern-based output filter that replaces violations with a safe fallback — also applied to Live API tool results and transcripts |
 | ⚠️ Every triage response shows a disclaimer | Added server-side and rendered by a dedicated UI component |
 | 🪪 Identity comes from the session, never the model | Every tool receives the user ID and role from the verified JWT; tools accept no patient ID from the LLM |
@@ -432,7 +448,9 @@ docker compose exec ollama ollama pull <small-instruct-model>
 | `STT_PROVIDER` / `TTS_PROVIDER` / `VAD_PROVIDER` | Which speech components to use; the mock ones need no model | `faster_whisper` / `gemini` / `silero` |
 | `WHISPER_MODEL` | faster-whisper model size | `small` · `base` |
 | `VAD_SILENCE_MS` | Silence before end-of-speech | `500` |
-| `GEMINI_BREAKER_THRESHOLD` | Consecutive `429`s before the breaker opens | `3` |
+| `GEMINI_BREAKER_THRESHOLD` | Failures in a row before the breaker opens | `3` |
+| `GEMINI_LIVE_MODEL` | Live model for Pipeline A; empty means voice always uses Pipeline B | — |
+| `LIVE_GUARD_HOLD_MS` | How long Pipeline A holds reply audio so its transcript is checked first | `300` |
 | `GEMINI_BREAKER_COOLDOWN_S` | Seconds Gemini is skipped | `60` |
 
 Model IDs live only in `.env`, never in code — free-tier model names change.
@@ -484,7 +502,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 | ✅ | **M1 — Foundation** | Repo, Docker Compose, CI, pre-commit, models, auth, seed data, demo banner | `v0.1.0` |
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
 | ✅ | **M3 — Agents & Pipeline B** | Intent classifier, guardrails + tests, eval set, specialist agents, text chat in the app, cascaded voice pipeline with barge-in, voice in the app ✅ | `v0.3.0` |
-| ⬜ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
+| 🚧 | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench ✅ · 8 kHz WER test, load test ⬜ | `v0.4.0` |
 | ⬜ | **M5 — Analytics & demo** | Analytics page, demo deployment, benchmarks, demo GIF, "hardest problem" write-up | `v0.5.0` |
 
 <details>

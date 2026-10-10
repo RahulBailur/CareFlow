@@ -1,4 +1,8 @@
-"""CareBot voice over a WebSocket: /ws/voice?pipeline=cascade
+"""CareBot voice over a WebSocket: /ws/voice?pipeline=live|cascade
+
+live     Pipeline A: a Gemini Live speech-to-speech session. Falls back to cascade,
+         on the same connection, if a Live session cannot be opened or is lost.
+cascade  Pipeline B: VAD -> STT -> agents -> TTS.
 
 Client -> server
   first message, text:  {"type": "auth", "token": "<JWT>", "session_id": "<optional>"}
@@ -7,7 +11,8 @@ Client -> server
   text:                 {"type": "playback_done"} | {"type": "end"}
 
 Server -> client
-  text:    ready, state, transcript, reply, audio_start, audio_end, audio_unavailable,
+  text:    ready (says which pipeline is running), pipeline (it changed mid-session),
+           state, transcript, reply, audio_start, audio_end, audio_unavailable,
            stop_audio (barge-in: drop whatever is still queued to play), timing, error
   binary:  the spoken reply, PCM16 mono at the sample rate given in audio_start
 """
@@ -30,6 +35,7 @@ from services.stt import get_stt
 from services.tts import get_tts
 from voice.audio_utils import SAMPLE_RATE
 from voice.cascade_pipeline import VoiceSession
+from voice.live_pipeline import LiveSession, LiveUnavailable, connect_gemini_live
 from voice.vad import Probability, SileroVAD, VADConfig, energy_vad
 
 logger = logging.getLogger(__name__)
@@ -41,6 +47,7 @@ MAX_AUDIO_MESSAGE_BYTES = 64 * 1024  # two seconds of 16 kHz PCM16
 
 # WebSocket close codes in the application range
 UNAUTHORIZED, UNSUPPORTED, TOO_MANY = 4401, 4400, 4429
+PIPELINES = ("live", "cascade")
 
 SESSION_ID = re.compile(r"[A-Za-z0-9_-]{8,64}")  # the same shape /api/chat accepts
 
@@ -88,8 +95,8 @@ async def voice(websocket: WebSocket, pipeline: str = "cascade") -> None:
     user, continued_session = await _authenticate(websocket)
     if user is None:
         return await websocket.close(UNAUTHORIZED, "unauthorized")
-    if pipeline != "cascade":
-        await websocket.send_json({"type": "error", "message": "Only pipeline=cascade exists yet."})
+    if pipeline not in PIPELINES:
+        await websocket.send_json({"type": "error", "message": "Unknown pipeline."})
         return await websocket.close(UNSUPPORTED, "unsupported pipeline")
     if not _allow_session(str(user.id)):
         return await websocket.close(TOO_MANY, "too many voice sessions")
@@ -109,22 +116,64 @@ async def voice(websocket: WebSocket, pipeline: str = "cascade") -> None:
                 await websocket.send_bytes(pcm16)
 
     session_id = continued_session or secrets.token_urlsafe(16)
-    session = VoiceSession(
-        user,
-        session_id,
-        send_json,
-        send_audio,
-        stt=get_stt(),
-        tts=get_tts(),
-        probability=_vad(),
-        vad_config=VADConfig(silence_ms=settings.vad_silence_ms),
-        chunking=settings.tts_chunking,
-    )
-    await send_json({"type": "ready", "session_id": session_id, "sample_rate": SAMPLE_RATE})
+    vad_config = VADConfig(silence_ms=settings.vad_silence_ms)
+
+    def cascade() -> VoiceSession:
+        return VoiceSession(
+            user,
+            session_id,
+            send_json,
+            send_audio,
+            stt=get_stt(),
+            tts=get_tts(),
+            probability=_vad(),
+            vad_config=vad_config,
+            chunking=settings.tts_chunking,
+        )
+
+    # Pipeline A if it was asked for and a Live session opens; otherwise Pipeline B.
+    # Both speak the same protocol to the client, so the fallback needs nothing from it.
+    session: VoiceSession | LiveSession | None = None
+    fallback_reason = ""
+    if pipeline == "live":
+        live = LiveSession(
+            user,
+            session_id,
+            send_json,
+            send_audio,
+            connect=connect_gemini_live,
+            model=settings.gemini_live_model,
+            probability=_vad(),
+            tts=get_tts(),
+            vad_config=vad_config,
+            hold_ms=settings.live_guard_hold_ms,
+        )
+        try:
+            await live.connect()
+            session = live
+        except LiveUnavailable as error:
+            fallback_reason = str(error)
+            logger.warning("Pipeline A unavailable, using Pipeline B: %s", error)
+    if session is None:
+        session = cascade()
+    ready = {
+        "type": "ready",
+        "session_id": session_id,
+        "sample_rate": SAMPLE_RATE,
+        "pipeline": "live" if isinstance(session, LiveSession) else "cascade",
+    }
+    await send_json(ready | ({"fallback_reason": fallback_reason} if fallback_reason else {}))
     await session.start()
     deadline = time.monotonic() + MAX_SESSION_S
     try:
         while time.monotonic() < deadline:
+            if isinstance(session, LiveSession) and session.failed.is_set():
+                # The Live session was lost mid-conversation: carry on with Pipeline B
+                reason = session.failure
+                await session.close()
+                session = cascade()
+                await send_json({"type": "pipeline", "pipeline": "cascade", "reason": reason})
+                await session.start()
             message = await asyncio.wait_for(websocket.receive(), deadline - time.monotonic())
             if message["type"] == "websocket.disconnect":
                 break

@@ -152,6 +152,7 @@ async def main() -> int:
     parser.add_argument("--email", default="divya@careflow.example", help="a seeded patient")
     parser.add_argument("--label", default="run")
     parser.add_argument("--lang", default="en")
+    parser.add_argument("--pipeline", choices=["cascade", "live"], default="cascade")
     parser.add_argument("--turns", type=int, default=0, help="0 = every utterance with audio")
     parser.add_argument("--gap", type=float, default=4.0, help="seconds between turns")
     parser.add_argument("--hardware", default="", help="a note stored with the results")
@@ -180,7 +181,9 @@ async def main() -> int:
     turns: list[dict[str, Any]] = []
     async with (
         aiohttp.ClientSession() as http,
-        http.ws_connect(f"{args.url.replace('http', 'ws', 1)}/ws/voice", max_msg_size=0) as ws,
+        http.ws_connect(
+            f"{args.url.replace('http', 'ws', 1)}/ws/voice?pipeline={args.pipeline}", max_msg_size=0
+        ) as ws,
     ):
         await ws.send_json({"type": "auth", "token": login.json()["access_token"]})
         for index, row in enumerate(rows, 1):
@@ -208,7 +211,7 @@ async def main() -> int:
         result = {
             "label": args.label,
             "measured_at": datetime.now(UTC).isoformat(timespec="seconds"),
-            "pipeline": "cascade",
+            "pipeline": args.pipeline,
             "config": {
                 "whisper_model": settings.whisper_model,
                 "whisper_cpu_threads": settings.whisper_cpu_threads,

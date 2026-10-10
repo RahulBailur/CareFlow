@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     gemini_breaker_threshold: int = 3
     gemini_breaker_cooldown_s: float = 60.0
     gemini_tts_model: str = ""
+    gemini_live_model: str = ""  # empty = Pipeline A always falls back to B
+    # Pipeline A holds each piece of reply audio this long before sending it on, so its
+    # transcript can be checked first. 0 sends at once: faster, and a blocked reply's
+    # first words may be heard.
+    live_guard_hold_ms: int = 300
     # Voice. The safe defaults need no model; real runs set these in .env
     stt_provider: Literal["faster_whisper", "mock"] = "mock"
     tts_provider: Literal["gemini", "piper", "mock"] = "mock"

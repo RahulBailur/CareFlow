@@ -1,7 +1,23 @@
 // What the voice UI shows. Driven only by events from the server and the device, never by
 // guessed timers: if the status says "Thinking", the server is thinking.
 
-export const initialVoice = { phase: "off", serverState: null, error: "" };
+// `pipeline` is the one the server says is actually running, which is not always the one
+// asked for: Pipeline A falls back to B when no real-time session can be had.
+export const initialVoice = {
+  phase: "off",
+  serverState: null,
+  error: "",
+  pipeline: null,
+  notice: "",
+};
+
+export const PIPELINES = {
+  live: "Real-time (A)",
+  cascade: "Cascaded (B)",
+};
+
+const FELL_BACK = "Real-time voice is not available right now, so this is the cascaded pipeline.";
+const SWITCHED = "The real-time connection was lost. Carrying on with the cascaded pipeline.";
 
 const STATUS = {
   IDLE: "Listening. Speak whenever you are ready.",
@@ -31,9 +47,16 @@ export function microphoneError(error) {
 export function voiceReducer(state, event) {
   switch (event.type) {
     case "starting":
-      return { phase: "starting", serverState: null, error: "" };
+      return { ...initialVoice, phase: "starting" };
     case "ready":
-      return { ...state, phase: "on" };
+      return {
+        ...state,
+        phase: "on",
+        pipeline: event.pipeline ?? null,
+        notice: event.fallback_reason ? FELL_BACK : "",
+      };
+    case "pipeline":
+      return { ...state, pipeline: event.pipeline, notice: SWITCHED };
     case "state":
       if (event.state === "END") return state;
       // Hearing the patient again means the last problem is behind us

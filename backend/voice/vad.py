@@ -98,6 +98,11 @@ class SpeechDetector:
     def in_speech(self) -> bool:
         return self._utterance is not None
 
+    @property
+    def last_speech_at(self) -> float:
+        """Clock time of the latest speech frame of the utterance in progress, or 0."""
+        return self._last_speech_at
+
     def reset(self) -> None:
         self._pre_roll.clear()
         self._utterance: list[Audio] | None = None

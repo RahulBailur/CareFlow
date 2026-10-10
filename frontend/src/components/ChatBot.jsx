@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { VoiceStream } from "../voice/VoiceStream";
 import TriageDisclaimer from "./TriageDisclaimer";
 import {
+  PIPELINES,
   initialVoice,
   microphoneError,
   voiceReducer,
@@ -35,6 +36,7 @@ export default function ChatBot() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [voice, dispatchVoice] = useReducer(voiceReducer, initialVoice);
+  const [pipeline, setPipeline] = useState("live");
   const sessionId = useRef(null);
   const stream = useRef(null);
   const inputRef = useRef(null);
@@ -94,6 +96,7 @@ export default function ChatBot() {
     const voiceStream = new VoiceStream({
       token: tokenStore.get(),
       sessionId: sessionId.current,
+      pipeline,
       onEvent: onVoiceEvent,
     });
     stream.current = voiceStream;
@@ -195,10 +198,25 @@ export default function ChatBot() {
         >
           {voiceOn ? "Stop voice" : "Start voice"}
         </button>
-        <p className="chat-voice-status muted" role="status">
-          {status}
-        </p>
+        <label htmlFor="voice-pipeline" className="visually-hidden">
+          Voice pipeline
+        </label>
+        <select
+          id="voice-pipeline"
+          value={voiceOn && voice.pipeline ? voice.pipeline : pipeline}
+          disabled={voiceOn}
+          onChange={(event) => setPipeline(event.target.value)}
+        >
+          {Object.entries(PIPELINES).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
+      <p className="chat-voice-status muted" role="status">
+        {[voice.notice, status].filter(Boolean).join(" ")}
+      </p>
 
       <form className="chat-form" onSubmit={send}>
         <label htmlFor="chat-input" className="visually-hidden">

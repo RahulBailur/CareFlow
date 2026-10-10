@@ -1,8 +1,8 @@
 import { createMic, createPlayer } from "./audioDevices";
 
-function voiceUrl() {
+function voiceUrl(pipeline) {
   const scheme = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${scheme}://${window.location.host}/ws/voice?pipeline=cascade`;
+  return `${scheme}://${window.location.host}/ws/voice?pipeline=${pipeline}`;
 }
 
 /**
@@ -12,8 +12,9 @@ function voiceUrl() {
  * audio (start, stop for barge-in, end) and tells the server when playback has finished.
  */
 export class VoiceStream {
-  constructor({ token, sessionId, onEvent, devices = {} }) {
+  constructor({ token, sessionId, onEvent, pipeline = "live", devices = {} }) {
     this.token = token;
+    this.pipeline = pipeline;
     this.sessionId = sessionId;
     this.onEvent = onEvent;
     this.devices = {
@@ -41,7 +42,7 @@ export class VoiceStream {
     }
     if (this.stopped) return; // stopped while the permission prompt was open
 
-    const socket = new this.devices.WebSocket(this.devices.url());
+    const socket = new this.devices.WebSocket(this.devices.url(this.pipeline));
     socket.binaryType = "arraybuffer";
     socket.onopen = () =>
       this.send({

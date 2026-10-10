@@ -136,7 +136,7 @@ function harness({ micError } = {}) {
   let onChunk, onDrained;
   const devices = {
     WebSocket: FakeSocket,
-    url: () => "ws://test/ws/voice?pipeline=cascade",
+    url: (pipeline) => `ws://test/ws/voice?pipeline=${pipeline}`,
     createMic: async (callback) => {
       if (micError) throw micError;
       onChunk = callback;
@@ -170,6 +170,7 @@ describe("VoiceStream", () => {
     socket.open();
 
     expect(socket.url).not.toContain("jwt-token");
+    expect(socket.url).toBe("ws://test/ws/voice?pipeline=live");
     expect(socket.json()).toEqual([
       { type: "auth", token: "jwt-token", session_id: "text-session-1" },
     ]);
