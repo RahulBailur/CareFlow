@@ -1,0 +1,34 @@
+{"id": "ho-en-01", "lang": "en", "intent": "booking", "text": "Could I get a slot with the orthopedic surgeon on Wednesday?"}
+{"id": "ho-en-02", "lang": "en", "intent": "booking", "text": "I'd like to push my visit to a later date"}
+{"id": "ho-en-03", "lang": "en", "intent": "triage", "text": "My throat is sore and it's hard to swallow"}
+{"id": "ho-en-04", "lang": "en", "intent": "triage", "text": "I twisted my ankle and it's swollen"}
+{"id": "ho-en-05", "lang": "en", "intent": "triage", "text": "There's a burning feeling when I pass urine"}
+{"id": "ho-en-06", "lang": "en", "intent": "triage", "text": "Who should I see for blurry vision?"}
+{"id": "ho-en-07", "lang": "en", "intent": "records", "text": "Can I get a copy of my test results?"}
+{"id": "ho-en-08", "lang": "en", "intent": "records", "text": "Which tablets was I prescribed in March?"}
+{"id": "ho-en-09", "lang": "en", "intent": "support", "text": "How do I reach the hospital by bus?"}
+{"id": "ho-en-10", "lang": "en", "intent": "support", "text": "Do you have parking?"}
+{"id": "ho-en-11", "lang": "en", "intent": "general", "text": "What can you do?"}
+{"id": "ho-hi-01", "lang": "hi", "intent": "booking", "text": "मुझे आँखों के डॉक्टर को दिखाना है"}
+{"id": "ho-hi-02", "lang": "hi", "intent": "booking", "text": "मेरा समय बदल दीजिए"}
+{"id": "ho-hi-03", "lang": "hi", "intent": "triage", "text": "सांस लेने में तकलीफ हो रही है"}
+{"id": "ho-hi-04", "lang": "hi", "intent": "triage", "text": "कमर में बहुत तकलीफ है"}
+{"id": "ho-hi-05", "lang": "hi", "intent": "records", "text": "मेरी जाँच की रिपोर्ट चाहिए"}
+{"id": "ho-hi-06", "lang": "hi", "intent": "support", "text": "अस्पताल कितने बजे बंद होता है?"}
+{"id": "ho-hi-07", "lang": "hi", "intent": "support", "text": "एम्बुलेंस का नंबर दीजिए"}
+{"id": "ho-kn-01", "lang": "kn", "intent": "booking", "text": "ನಾಳೆ ಬೆಳಿಗ್ಗೆ ಡಾಕ್ಟರ್ ಸಿಗುತ್ತಾರಾ?"}
+{"id": "ho-kn-02", "lang": "kn", "intent": "booking", "text": "ನನ್ನ ಭೇಟಿಯನ್ನು ಮುಂದೂಡಿ"}
+{"id": "ho-kn-03", "lang": "kn", "intent": "triage", "text": "ಉಸಿರಾಡಲು ಕಷ್ಟ ಆಗುತ್ತಿದೆ"}
+{"id": "ho-kn-04", "lang": "kn", "intent": "triage", "text": "ತಲೆ ಸುತ್ತುತ್ತಿದೆ"}
+{"id": "ho-kn-05", "lang": "kn", "intent": "records", "text": "ನನ್ನ ಪರೀಕ್ಷೆಯ ವರದಿ ಬೇಕು"}
+{"id": "ho-kn-06", "lang": "kn", "intent": "support", "text": "ಆಸ್ಪತ್ರೆ ಎಷ್ಟು ಗಂಟೆಗೆ ಮುಚ್ಚುತ್ತದೆ?"}
+{"id": "ho-kn-07", "lang": "kn", "intent": "support", "text": "ಆಂಬ್ಯುಲೆನ್ಸ್ ನಂಬರ್ ಕೊಡಿ"}
+{"id": "ho-mx-01", "lang": "mixed", "intent": "booking", "text": "doctor se milna hai kal subah"}
+{"id": "ho-mx-02", "lang": "mixed", "intent": "booking", "text": "appointment aage badha do"}
+{"id": "ho-mx-03", "lang": "mixed", "intent": "triage", "text": "gale mein kharash hai aur nigalne mein dikkat"}
+{"id": "ho-mx-04", "lang": "mixed", "intent": "triage", "text": "nanage tale suttu barthide"}
+{"id": "ho-mx-05", "lang": "mixed", "intent": "triage", "text": "saans lene mein takleef ho rahi hai"}
+{"id": "ho-mx-06", "lang": "mixed", "intent": "records", "text": "blood test report beku"}
+{"id": "ho-mx-07", "lang": "mixed", "intent": "support", "text": "hospital ka address bhejo"}
+{"id": "ho-mx-08", "lang": "mixed", "intent": "support", "text": "parking ide ya?"}
+{"id": "ho-mx-09", "lang": "mixed", "intent": "general", "text": "aap kaun ho?"}

@@ -232,9 +232,26 @@ Pipeline A is measured end to end, since its stages happen inside one model.
 
 > 🚧 **Not measured yet.** This section will hold the actual P50 / P95 per stage, the hardware used, and before/after numbers for each optimisation (for example, how much TTS sentence streaming cuts TTFA). That before/after table is the main deliverable of the project.
 
+#### Intent classifier (measured)
+
+How often the local classifier picks the right agent, and how often it is sure enough to skip the LLM. Run with `python eval/run_eval.py --classifier --set all`.
+
+| Set | Stages | Best guess correct | Settled without the LLM | Wrong when confident |
+|---|---|:---:|:---:|:---:|
+| Dev (75) | Keywords only | 75 / 75 | 72 / 75 | 0 |
+| Dev (75) | Keywords + embeddings | 75 / 75 | 73 / 75 | 0 |
+| Held-out (34) | Keywords only | 12 / 34 (35%) | 9 / 34 (26%) | 0 |
+| Held-out (34) | Keywords + embeddings | 29 / 34 (85%) | 16 / 34 (47%) | 0 |
+
+- **The dev score is not a quality claim.** That set was written together with the keyword rules, so it only guards against regressions. The held-out set was written before the rules were first run, and is the honest number.
+- **Keywords alone do not generalise**: on unseen phrasings they recognise about a third. The embedding stage is what lifts the best guess to 85%.
+- **Kannada is the weak spot**: 5 / 7 held-out with embeddings, against 7 / 7 for Hindi. The embedding model (`paraphrase-multilingual-MiniLM-L12-v2`) was not trained on Kannada.
+- **About half of unseen turns still go to the LLM.** The thresholds are cautious: no confident local answer was wrong on either set, at the cost of handing off more often.
+- Both sets are small and were written by the project author, not collected from patients.
+
 | Script | What it measures |
 |---|---|
-| `eval/run_eval.py --classifier` | Intent accuracy of the local classifier on 60–80 labelled utterances (EN / HI / KN / code-mixed) |
+| `eval/run_eval.py --classifier` | Intent accuracy of the local classifier on labelled utterances (EN / HI / KN / code-mixed) — results above |
 | `eval/run_eval.py --live` | End-to-end tool-call correctness with the real LLM |
 | `eval/stt_wer.py` | faster-whisper word error rate at 16 kHz vs 8 kHz phone-grade audio, per language |
 | `eval/latency_bench.py` | P50 / P95 per stage for both pipelines |
@@ -274,7 +291,7 @@ Every component is free-tier or open source.
 | **Auth** | PyJWT · bcrypt |
 | **LLM** | Gemini Flash / Flash-Lite · Ollama (offline fallback) |
 | **Real-time voice** | Gemini Live API (native audio) |
-| **Intent classifier** | Keyword rules + multilingual sentence-transformers (local, CPU) |
+| **Intent classifier** | Keyword rules + a multilingual sentence-transformers model run through fastembed (ONNX, local CPU) |
 | **VAD / STT / TTS** | Silero VAD · faster-whisper · Gemini Flash TTS · Piper |
 | **Observability** | structlog · Langfuse (optional, self-hosted) |
 | **Testing** | pytest · httpx · Vitest · React Testing Library · Locust |
@@ -395,7 +412,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 |:---:|---|---|:---:|
 | ✅ | **M1 — Foundation** | Repo, Docker Compose, CI, pre-commit, models, auth, seed data, demo banner | `v0.1.0` |
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
-| ⬜ | **M3 — Agents & Pipeline B** | Intent classifier, specialist agents, guardrails + tests, eval set, cascaded voice pipeline, barge-in | `v0.3.0` |
+| 🚧 | **M3 — Agents & Pipeline B** | Intent classifier, guardrails filter + tests, eval set ✅ · specialist agents, chat, cascaded voice pipeline, barge-in ⬜ | `v0.3.0` |
 | ⬜ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
 | ⬜ | **M5 — Analytics & demo** | Analytics page, demo deployment, benchmarks, demo GIF, "hardest problem" write-up | `v0.5.0` |
 

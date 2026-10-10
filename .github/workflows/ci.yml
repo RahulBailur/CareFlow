@@ -47,6 +47,8 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - run: pip install -e ".[dev]"
       - run: pytest -m guardrail -v
+      # Keyword rules only: a regression gate that needs no model download
+      - run: python eval/run_eval.py --classifier --no-embeddings --min-accuracy 0.95
 
   frontend:
     runs-on: ubuntu-latest
