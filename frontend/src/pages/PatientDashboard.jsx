@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import api, { errorMessage } from "../api";
+import { APPOINTMENTS_CHANGED } from "../components/ChatBot";
 import QueueTracker from "../components/QueueTracker";
 import { useAuth } from "../context/AuthContext";
 import { useQueueUpdates } from "../context/QueueSocketContext";
@@ -26,6 +27,12 @@ export default function PatientDashboard() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  // CareBot booked, moved or cancelled something
+  useEffect(() => {
+    window.addEventListener(APPOINTMENTS_CHANGED, load);
+    return () => window.removeEventListener(APPOINTMENTS_CHANGED, load);
   }, [load]);
 
   // A finished or cancelled appointment should leave the lists without a manual refresh
