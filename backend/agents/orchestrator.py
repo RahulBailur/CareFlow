@@ -3,6 +3,8 @@
 Used by the chat endpoint now and by the cascaded voice pipeline later.
 """
 
+import logging
+import secrets
 from dataclasses import dataclass, field
 
 from agents.base import Agent, run_agent
@@ -24,6 +26,9 @@ from memory import conversation_memory as memory
 from models.user import User
 from services.llm import LLMProvider, LLMUnavailable, Message, get_llm
 from tools import ToolContext
+from tools.confirmation import expire_older_proposals
+
+logger = logging.getLogger(__name__)
 
 AGENTS: dict[Intent, Agent] = {
     agent.intent: agent
@@ -68,8 +73,8 @@ async def _route(
         words = response.text.strip().lower().split()
         if words and words[0].strip(".,:") in Intent._value2member_map_:
             return Intent(words[0].strip(".,:")), "llm"
-    except LLMUnavailable:
-        pass
+    except LLMUnavailable as error:
+        logger.warning("LLM unavailable for routing: %s", error)
     # No LLM verdict. A follow-up with no signal of its own ("what time was that again?")
     # stays with the agent that handled the turn before it.
     no_signal = not any(keyword_scores(text).values())
@@ -92,8 +97,14 @@ async def run_text_turn(
     previous = await memory.last_intent(user.id, session_id)
 
     intent, routed_by = await _route(local, text, history, previous, llm)
-    context = ToolContext(user=user, language=local.language)
+    context = ToolContext(
+        user=user,
+        language=local.language,
+        session_id=session_id,
+        turn_id=secrets.token_hex(8),
+    )
     answer = await run_agent(AGENTS[intent], context, text, history, llm)
+    await expire_older_proposals(context)
 
     result = TurnResult(
         reply=answer.text,
@@ -112,5 +123,5 @@ async def run_text_turn(
             guarded.blocked,
         )
 
-    await memory.remember(user.id, session_id, text, result.reply, intent)
+    await memory.remember(user.id, session_id, text, result.reply, intent, "; ".join(answer.notes))
     return result

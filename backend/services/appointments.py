@@ -35,7 +35,7 @@ def _slot_taken() -> BookingError:
     return BookingError(409, "That slot has just been taken")
 
 
-def _slot_unavailable() -> BookingError:
+def slot_unavailable() -> BookingError:
     return BookingError(400, "That is not an open slot in the doctor's schedule")
 
 
@@ -88,7 +88,7 @@ async def book(
     doctor = await get_doctor(doctor_id)
     slot = await bookable_slot(doctor_id, slot_start)
     if slot is None or patient.id is None:
-        raise _slot_unavailable()
+        raise slot_unavailable()
     appointment = Appointment(
         patient_id=patient.id,
         doctor_id=doctor_id,
@@ -105,7 +105,7 @@ async def book(
     return appointment, doctor
 
 
-async def _own_changeable(patient: User, appointment_id: PydanticObjectId) -> Appointment:
+async def own_changeable(patient: User, appointment_id: PydanticObjectId) -> Appointment:
     """The patient's own appointment, if it can still be changed. Anyone else's is 'not found'."""
     appointment = await Appointment.get(appointment_id)
     if appointment is None or appointment.patient_id != patient.id:
@@ -116,7 +116,7 @@ async def _own_changeable(patient: User, appointment_id: PydanticObjectId) -> Ap
 
 
 async def cancel(patient: User, appointment_id: PydanticObjectId) -> tuple[Appointment, User]:
-    appointment = await _own_changeable(patient, appointment_id)
+    appointment = await own_changeable(patient, appointment_id)
     doctor = await get_doctor(appointment.doctor_id)
     appointment.cancel()
     await appointment.save()
@@ -127,11 +127,11 @@ async def cancel(patient: User, appointment_id: PydanticObjectId) -> tuple[Appoi
 async def reschedule(
     patient: User, appointment_id: PydanticObjectId, slot_start: datetime
 ) -> tuple[Appointment, User]:
-    appointment = await _own_changeable(patient, appointment_id)
+    appointment = await own_changeable(patient, appointment_id)
     doctor = await get_doctor(appointment.doctor_id)
     slot = await bookable_slot(appointment.doctor_id, slot_start)
     if slot is None:
-        raise _slot_unavailable()
+        raise slot_unavailable()
     appointment.move_to(*slot)
     try:
         await appointment.save()

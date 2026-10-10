@@ -202,23 +202,24 @@ async def test_general_fallback_says_what_carebot_can_do(client: AsyncClient) ->
 async def test_booking_agent_books_through_its_tools(client: AsyncClient) -> None:
     patient, doctor = await make_user(), await make_doctor("Dr. Tool")
     start = slot(1, 4)
-    llm = ScriptedLLM(
+    book = call("book_slot", doctor_id=str(doctor.id), slot_start=start.isoformat())
+    first = ScriptedLLM(
         call("find_slots", date=start.astimezone(IST).date().isoformat()),
-        call("book_slot", doctor_id=str(doctor.id), slot_start=start.isoformat()),
-        say("Booked with Dr. Tool."),
+        book,
+        say("Shall I book Dr. Tool?"),
     )
+    second = ScriptedLLM(book, say("Booked with Dr. Tool."))
 
-    result = await run_text_turn(
-        patient, "Book an appointment for tomorrow", "session-1", llm, KEYWORDS_ONLY
-    )
+    asked = await run_text_turn(patient, "Book an appointment", "session-1", first, KEYWORDS_ONLY)
+    assert await Appointment.count() == 0  # proposed, not booked
+    done = await run_text_turn(patient, "yes please book it", "session-1", second, KEYWORDS_ONLY)
 
     booked = await Appointment.find_one(Appointment.patient_id == patient.id)
     assert booked is not None and as_utc(booked.slot_start) == start
-    assert result.reply == "Booked with Dr. Tool."
-    assert result.tools_called == ["find_slots", "book_slot"]
-    assert result.used_llm
-    # The model was shown the real slots before it booked one
-    slots_message = llm.calls[1][1][-1]
+    assert asked.tools_called == ["find_slots", "book_slot"]
+    assert done.reply == "Booked with Dr. Tool." and done.used_llm
+    # The model was shown the real slots before it proposed one
+    slots_message = first.calls[1][1][-1]
     assert slots_message.role == "tool" and slots_message.tool_result is not None
     assert slots_message.tool_result["doctors"][0]["doctor_name"] == "Dr. Tool"
 

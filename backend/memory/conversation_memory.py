@@ -23,7 +23,10 @@ async def _latest(user_id: PydanticObjectId, session_id: str, limit: int) -> lis
 async def recent_messages(user_id: PydanticObjectId, session_id: str) -> list[Message]:
     """The last few turns of this user's session, oldest first."""
     turns = await _latest(user_id, session_id, HISTORY_TURNS)
-    return [Message(turn.role, turn.text) for turn in reversed(turns)]
+    return [
+        Message(turn.role, f"{turn.text}\n[{turn.note}]" if turn.note else turn.text)
+        for turn in reversed(turns)
+    ]
 
 
 async def last_intent(user_id: PydanticObjectId, session_id: str) -> Intent | None:
@@ -32,7 +35,12 @@ async def last_intent(user_id: PydanticObjectId, session_id: str) -> Intent | No
 
 
 async def remember(
-    user_id: PydanticObjectId, session_id: str, user_text: str, reply: str, intent: Intent
+    user_id: PydanticObjectId,
+    session_id: str,
+    user_text: str,
+    reply: str,
+    intent: Intent,
+    note: str = "",
 ) -> None:
     for role, text in (("user", user_text), ("assistant", reply)):
         await ConversationTurn(
@@ -41,4 +49,5 @@ async def remember(
             role=role,
             text=text,
             intent=intent.value,
+            note=note if role == "assistant" else "",
         ).insert()

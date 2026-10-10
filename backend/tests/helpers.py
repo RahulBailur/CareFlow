@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta
+from typing import Any
 
 from auth_utils import create_access_token, hash_password
 from models.appointment import Appointment, AppointmentStatus
@@ -72,3 +73,13 @@ async def make_appointment(
     )
     await appointment.insert()
     return appointment
+
+
+async def confirmed_tool_call(tool: Any, user: User, args: dict[str, Any]) -> dict[str, Any]:
+    """Call a changing tool as a confirmed conversation does: propose, then repeat next turn."""
+    from tools import ToolContext, run_tool
+
+    proposal = await run_tool(tool, ToolContext(user=user, session_id="s", turn_id="t1"), args)
+    if not proposal.get("needs_confirmation"):
+        return proposal
+    return await run_tool(tool, ToolContext(user=user, session_id="s", turn_id="t2"), args)

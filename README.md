@@ -271,6 +271,7 @@ Guardrails are enforced **in code, not only in prompts**, and each one has a tes
 | 🚫 No privileged self-registration | The register endpoint creates patients only; doctors and admins are seeded |
 | 🔌 Sockets require auth | JWT checked on connect; patients receive only their own queue position |
 | 📅 No double booking | Unique index on `(doctor_id, slot_start)`; a duplicate insert returns `409` |
+| ✋ No change without a confirming turn | Booking, cancelling and rescheduling tools only take effect in the turn after the one that proposed them, so the patient always hears the change first |
 | 🚦 Abuse and quota protection | Rate limits on auth, chat and voice endpoints |
 | 🧪 Mock DB never used outside tests | The app refuses to start with the mock database unless running in the test environment |
 

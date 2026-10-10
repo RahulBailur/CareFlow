@@ -7,8 +7,10 @@ from pydantic import AwareDatetime, Field
 from models.appointment import Appointment, AppointmentStatus
 from models.user import Role, User
 from services import appointments as booking
+from services.scheduling import bookable_slot, open_slots
 from time_utils import IST, as_utc, now_utc
 from tools import PATIENTS_ONLY, Tool, ToolArgs, ToolContext, ToolResult, schema
+from tools.confirmation import confirm_or_propose
 
 MAX_SLOTS_PER_DOCTOR = 6
 
@@ -34,6 +36,16 @@ async def _match_department(name: str) -> str | None:
     doctors = await User.find(User.role == Role.DOCTOR).to_list()
     wanted = name.strip().lower()
     return next((d.department for d in doctors if (d.department or "").lower() == wanted), None)
+
+
+async def _require_open(doctor_id: PydanticObjectId, slot_start: datetime) -> None:
+    """Refuse before asking the patient to confirm something that cannot be done."""
+    slot = await bookable_slot(doctor_id, slot_start)
+    if slot is None:
+        raise booking.slot_unavailable()
+    day = slot[0].astimezone(IST).date()
+    if slot not in await open_slots(doctor_id, day):
+        raise booking.BookingError(409, "That slot has just been taken")
 
 
 class FindSlotsArgs(ToolArgs):
@@ -81,6 +93,11 @@ async def book_slot(context: ToolContext, args: dict[str, Any]) -> ToolResult:
     if not context.is_patient:
         return PATIENTS_ONLY
     parsed = BookSlotArgs.model_validate(args)
+    doctor = await booking.get_doctor(parsed.doctor_id)
+    await _require_open(parsed.doctor_id, parsed.slot_start)
+    summary = f"Book {doctor.name} ({doctor.department}) on {local_time(parsed.slot_start)}"
+    if proposal := await confirm_or_propose(context, "book_slot", parsed, summary):
+        return proposal
     appointment, doctor = await booking.book(
         context.user, parsed.doctor_id, parsed.slot_start, parsed.reason
     )
@@ -107,6 +124,11 @@ async def cancel_appointment(context: ToolContext, args: dict[str, Any]) -> Tool
     if not context.is_patient:
         return PATIENTS_ONLY
     parsed = AppointmentArgs.model_validate(args)
+    current = await booking.own_changeable(context.user, parsed.appointment_id)
+    doctor = await booking.get_doctor(current.doctor_id)
+    summary = f"Cancel the appointment with {doctor.name} on {local_time(current.slot_start)}"
+    if proposal := await confirm_or_propose(context, "cancel_appointment", parsed, summary):
+        return proposal
     appointment, doctor = await booking.cancel(context.user, parsed.appointment_id)
     return {"cancelled": _describe(appointment, doctor.name)}
 
@@ -119,6 +141,15 @@ async def reschedule_appointment(context: ToolContext, args: dict[str, Any]) -> 
     if not context.is_patient:
         return PATIENTS_ONLY
     parsed = RescheduleArgs.model_validate(args)
+    current = await booking.own_changeable(context.user, parsed.appointment_id)
+    doctor = await booking.get_doctor(current.doctor_id)
+    await _require_open(current.doctor_id, parsed.slot_start)
+    summary = (
+        f"Move the appointment with {doctor.name} from {local_time(current.slot_start)} "
+        f"to {local_time(parsed.slot_start)}"
+    )
+    if proposal := await confirm_or_propose(context, "reschedule_appointment", parsed, summary):
+        return proposal
     appointment, doctor = await booking.reschedule(
         context.user, parsed.appointment_id, parsed.slot_start
     )
@@ -150,7 +181,7 @@ BOOKING_TOOLS: tuple[Tool, ...] = (
     ),
     Tool(
         "book_slot",
-        "Book one open slot for the logged-in patient.",
+        "Book one open slot for the logged-in patient. The first call only proposes it.",
         schema(
             {
                 "doctor_id": {"type": "string", "description": "doctor_id from find_slots."},

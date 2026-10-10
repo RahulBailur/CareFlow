@@ -26,6 +26,9 @@ PATIENTS_ONLY = {"error": "Only a logged-in patient can do this."}
 class ToolContext:
     user: User  # from the JWT, never from model output
     language: Language = "en"
+    # Which conversation and which turn of it: used to hold changes for confirmation
+    session_id: str = "no-session"
+    turn_id: str = ""
 
     @property
     def is_patient(self) -> bool:
@@ -70,3 +73,17 @@ async def run_tool(tool: Tool, context: ToolContext, args: dict[str, Any]) -> To
         return {"error": f"Invalid arguments: {problems}"}
     except BookingError as error:
         return {"error": error.detail}
+
+
+OUTCOME_KEYS = ("booked", "cancelled", "rescheduled")
+
+
+def outcome_note(tool_name: str, result: ToolResult) -> str | None:
+    """A one-line record of what a tool did or proposed, kept in conversation memory."""
+    for key in OUTCOME_KEYS:
+        if key in result:
+            done = result[key]
+            return f"{key} {done['doctor_name']} at {done['local_time']}"
+    if result.get("needs_confirmation"):
+        return f"awaiting the patient's yes for {tool_name} {result['repeat_with']['arguments']}"
+    return None

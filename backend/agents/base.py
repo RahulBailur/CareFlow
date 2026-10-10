@@ -1,5 +1,6 @@
 """The tool-calling loop every specialist agent shares."""
 
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
@@ -7,7 +8,10 @@ from agents.intent_classifier import Language
 from agents.intent_data import Intent
 from services.llm import LLMProvider, LLMUnavailable, Message
 from time_utils import IST, now_utc
-from tools import Tool, ToolContext, run_tool
+from tools import OUTCOME_KEYS, Tool, ToolContext, outcome_note, run_tool
+from tools.confirmation import drop_proposals
+
+logger = logging.getLogger(__name__)
 
 MAX_TOOL_ROUNDS = 4
 
@@ -39,6 +43,8 @@ class AgentReply:
     text: str
     used_llm: bool
     tools_called: list[str] = field(default_factory=list)
+    # What the tools did or proposed this turn, for conversation memory
+    notes: list[str] = field(default_factory=list)
 
 
 def system_prompt(agent: Agent, language: Language) -> str:
@@ -55,12 +61,13 @@ async def run_agent(
     specs = [tool.spec for tool in agent.tools]
     messages = [*history, Message("user", text)]
     called: list[str] = []
+    notes: list[str] = []
     try:
         for _ in range(MAX_TOOL_ROUNDS):
             response = await llm.generate(system_prompt(agent, context.language), messages, specs)
             if not response.tool_calls:
                 if response.text.strip():
-                    return AgentReply(response.text.strip(), True, called)
+                    return AgentReply(response.text.strip(), True, called, notes)
                 break
             messages.append(
                 Message("assistant", response.text, response.tool_calls, raw=response.raw)
@@ -74,7 +81,18 @@ async def run_agent(
                     else {"error": f"{call.name} is not available here."}
                 )
                 called.append(call.name)
+                if note := outcome_note(call.name, result):
+                    notes.append(note)
                 messages.append(Message("tool", tool_name=call.name, tool_result=result))
-    except LLMUnavailable:
-        pass
-    return AgentReply(await agent.fallback(context, text), False, called)
+    except LLMUnavailable as error:
+        logger.warning("LLM unavailable for the %s agent: %s", agent.intent.value, error)
+
+    # No final answer from the model. Changes already made are reported plainly, and a
+    # proposal the patient never got to hear is withdrawn so a later "yes" cannot confirm it.
+    done = [note for note in notes if note.split(" ", 1)[0] in OUTCOME_KEYS]
+    if len(done) != len(notes):
+        await drop_proposals(context)
+    reply = await agent.fallback(context, text)
+    if done:
+        reply = f"Done: {'; '.join(done)}. {reply}"
+    return AgentReply(reply, False, called, done)

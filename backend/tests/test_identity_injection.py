@@ -14,7 +14,7 @@ from agents.orchestrator import AGENTS
 from agents.records_agent import RECORDS_AGENT
 from models.appointment import Appointment, AppointmentStatus
 from models.user import Role
-from tests.helpers import make_appointment, make_doctor, make_user, slot
+from tests.helpers import confirmed_tool_call, make_appointment, make_doctor, make_user, slot
 from tools import ToolContext, run_tool
 
 pytestmark = pytest.mark.guardrail
@@ -49,9 +49,9 @@ async def test_booking_ignores_a_patient_id_supplied_by_the_model(client: AsyncC
     caller, victim, doctor = await make_user(), await make_user(), await make_doctor()
     start = slot(1, 3)
 
-    result = await run_tool(
+    result = await confirmed_tool_call(
         tool(BOOKING_AGENT.tools, "book_slot"),
-        ToolContext(user=caller),
+        caller,
         {
             "doctor_id": str(doctor.id),
             "slot_start": start.isoformat(),

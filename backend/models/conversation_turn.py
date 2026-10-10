@@ -22,6 +22,8 @@ class ConversationTurn(Document):
     role: Literal["user", "assistant"]
     text: str
     intent: str
+    # What CareBot's tools did or proposed in this turn; shown to the model, not the patient
+    note: str = ""
     created_at: datetime = Field(default_factory=now_utc)
 
     class Settings:

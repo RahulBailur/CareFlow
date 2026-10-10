@@ -20,7 +20,7 @@ async def fallback(context: ToolContext, text: str) -> str:
     doctor = f"{last['doctor_name']} ({last['department']})"
     reply = f"Your last visit was with {doctor} on {last['local_time']}."
     if last.get("prescription"):
-        reply += f" The note recorded was: {last['prescription']}"
+        reply += f" The note recorded was: {last['prescription'].rstrip('.')}."
     return f"{reply} Your full history is on the Visit history page."
 
 
