@@ -10,6 +10,11 @@ os.environ["RATE_LIMIT_AUTH"] = "5/minute"
 os.environ["SEED_DEFAULT_PASSWORD"] = "seed-password-1"
 # Tests must behave the same whether or not a frontend build happens to exist locally
 os.environ["FRONTEND_BUILD_DIR"] = "no-frontend-build-in-tests"
+# Never a real model in tests, whatever the developer's own .env says
+os.environ["LLM_PROVIDER"] = "mock"
+os.environ["GEMINI_API_KEY"] = ""
+os.environ["INTENT_EMBEDDING_MODEL"] = ""
+os.environ["RATE_LIMIT_CHAT"] = "1000/minute"
 
 import pytest  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402

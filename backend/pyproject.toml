@@ -18,6 +18,7 @@ dependencies = [
     "bcrypt>=4.2",
     "slowapi>=0.1.9",
     "python-socketio>=5.11",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
@@ -28,7 +29,6 @@ ml = [
 dev = [
     "pytest>=8",
     "pytest-asyncio>=0.24",
-    "httpx>=0.27",
     "mongomock-motor>=0.0.34",
     "aiohttp>=3.10",  # Socket.IO test client
     "ruff>=0.6.9",
@@ -46,7 +46,7 @@ py-modules = [
     "sockets",
     "time_utils",
 ]
-packages = ["agents", "eval", "models", "routes", "scripts", "services"]
+packages = ["agents", "eval", "memory", "models", "routes", "scripts", "services", "tools"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -56,6 +56,8 @@ asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     # Raised inside beanie / lazy_model, not by our code
     "ignore::pydantic.warnings.PydanticDeprecatedSince211",
+    # Raised inside mongomock when it handles a TTL index
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:mongomock",
 ]
 markers = [
     "guardrail: healthcare/security guardrail tests, run as their own required CI job",

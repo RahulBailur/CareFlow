@@ -1,16 +1,14 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from beanie import PydanticObjectId
-from beanie.exceptions import RevisionIdWasChanged
-from beanie.operators import In
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
-from pymongo.errors import DuplicateKeyError
 
 from auth_utils import CurrentUser, require_role
 from models.appointment import Appointment, AppointmentStatus
 from models.user import Role, User
+from services import appointments as booking
 from services.queue import (
     DoctorQueueView,
     PatientQueueView,
@@ -18,22 +16,14 @@ from services.queue import (
     load_queue,
     patient_view,
 )
-from services.scheduling import bookable_slot, open_slots
 from sockets import broadcast_queue
-from time_utils import as_utc, now_utc, today_ist
+from time_utils import as_utc
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 PatientUser = Annotated[User, Depends(require_role(Role.PATIENT))]
 DoctorUser = Annotated[User, Depends(require_role(Role.DOCTOR))]
 
-BOOKING_WINDOW_DAYS = 30
-HISTORY_DAYS = 365
-
-SLOT_TAKEN = HTTPException(status.HTTP_409_CONFLICT, "That slot has just been taken")
-SLOT_UNAVAILABLE = HTTPException(
-    status.HTTP_400_BAD_REQUEST, "That is not an open slot in the doctor's schedule"
-)
 NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Appointment not found")
 
 # What a doctor may move an appointment to, from each state
@@ -106,13 +96,6 @@ class AppointmentOut(BaseModel):
         )
 
 
-async def _get_doctor(doctor_id: PydanticObjectId) -> User:
-    doctor = await User.get(doctor_id)
-    if doctor is None or doctor.role != Role.DOCTOR:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Doctor not found")
-    return doctor
-
-
 @router.get("/availability")
 async def availability(
     user: CurrentUser,
@@ -120,72 +103,27 @@ async def availability(
     department: str | None = None,
     doctor_id: PydanticObjectId | None = None,
 ) -> list[DoctorAvailability]:
-    today = today_ist()
-    day = day or today
-    if not today <= day <= today + timedelta(days=BOOKING_WINDOW_DAYS):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Date must be between today and {BOOKING_WINDOW_DAYS} days ahead",
+    return [
+        DoctorAvailability(
+            doctor_id=str(found.doctor.id),
+            doctor_name=found.doctor.name,
+            department=found.doctor.department,
+            slots=[SlotOut(start=start, end=end) for start, end in found.slots],
         )
-    if doctor_id is not None:
-        doctors = [await _get_doctor(doctor_id)]
-    elif department is not None:
-        doctors = await User.find(User.role == Role.DOCTOR, User.department == department).to_list()
-    else:
-        doctors = await User.find(User.role == Role.DOCTOR).to_list()
-
-    result = []
-    for doctor in doctors:
-        if doctor.id is None:
-            continue
-        slots = await open_slots(doctor.id, day)
-        result.append(
-            DoctorAvailability(
-                doctor_id=str(doctor.id),
-                doctor_name=doctor.name,
-                department=doctor.department,
-                slots=[SlotOut(start=start, end=end) for start, end in slots],
-            )
-        )
-    return result
+        for found in await booking.find_availability(day, department, doctor_id)
+    ]
 
 
 @router.post("/book", status_code=status.HTTP_201_CREATED)
 async def book(patient: PatientUser, body: BookRequest) -> AppointmentOut:
-    doctor = await _get_doctor(body.doctor_id)
-    slot = await bookable_slot(body.doctor_id, body.slot_start)
-    if slot is None or patient.id is None:
-        raise SLOT_UNAVAILABLE
-    appointment = Appointment(
-        patient_id=patient.id,
-        doctor_id=body.doctor_id,
-        department=doctor.department or "",
-        slot_start=slot[0],
-        slot_end=slot[1],
-        reason=body.reason,
-    )
-    try:
-        await appointment.insert()
-    except DuplicateKeyError:
-        raise SLOT_TAKEN from None
-    await broadcast_queue(doctor)
+    appointment, doctor = await booking.book(patient, body.doctor_id, body.slot_start, body.reason)
     return AppointmentOut.build(appointment, doctor.name)
 
 
 @router.get("/me")
 async def my_appointments(patient: PatientUser) -> list[AppointmentOut]:
     """The logged-in patient's own visits: the last 12 months plus anything upcoming."""
-    since = now_utc() - timedelta(days=HISTORY_DAYS)
-    appointments = (
-        await Appointment.find(
-            Appointment.patient_id == patient.id, Appointment.slot_start >= since
-        )
-        .sort("-slot_start")
-        .to_list()
-    )
-    doctors = await User.find(In(User.id, [a.doctor_id for a in appointments])).to_list()
-    names = {doctor.id: doctor.name for doctor in doctors}
-    return [AppointmentOut.build(a, names.get(a.doctor_id, "Unknown")) for a in appointments]
+    return [AppointmentOut.build(a, name) for a, name in await booking.history(patient)]
 
 
 @router.get("/queue/{doctor_id}")
@@ -193,7 +131,7 @@ async def queue(
     user: CurrentUser, doctor_id: PydanticObjectId
 ) -> DoctorQueueView | PatientQueueView:
     """Doctors (own queue) and admins get the full list; a patient gets only their own place."""
-    doctor = await _get_doctor(doctor_id)
+    doctor = await booking.get_doctor(doctor_id)
     if user.role == Role.DOCTOR and user.id != doctor.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not permitted")
     snapshot = await load_queue(doctor)
@@ -232,28 +170,9 @@ async def change_appointment(
     patient: PatientUser, appointment_id: PydanticObjectId, body: ChangeRequest
 ) -> AppointmentOut:
     """Reschedule or cancel: only by the patient who owns it, and only before it starts."""
-    appointment = await Appointment.get(appointment_id)
-    if appointment is None or appointment.patient_id != patient.id:
-        raise NOT_FOUND
-    if appointment.status != AppointmentStatus.BOOKED:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, f"A {appointment.status} appointment cannot be changed"
-        )
-    doctor = await _get_doctor(appointment.doctor_id)
-
     if body.action == "cancel":
-        appointment.cancel()
-        await appointment.save()
-        await broadcast_queue(doctor, also=appointment)
-        return AppointmentOut.build(appointment, doctor.name)
-
-    slot = await bookable_slot(appointment.doctor_id, body.slot_start) if body.slot_start else None
-    if slot is None:
-        raise SLOT_UNAVAILABLE
-    appointment.move_to(*slot)
-    try:
-        await appointment.save()
-    except (DuplicateKeyError, RevisionIdWasChanged):  # beanie re-raises the former as the latter
-        raise SLOT_TAKEN from None
-    await broadcast_queue(doctor)
+        appointment, doctor = await booking.cancel(patient, appointment_id)
+    else:
+        assert body.slot_start is not None  # noqa: S101 — enforced by ChangeRequest
+        appointment, doctor = await booking.reschedule(patient, appointment_id, body.slot_start)
     return AppointmentOut.build(appointment, doctor.name)

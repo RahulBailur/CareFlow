@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     use_mock_db: bool = False
     bcrypt_rounds: int = 12
     rate_limit_auth: str = "10/minute"
+    rate_limit_chat: str = "20/minute"
+    llm_provider: Literal["gemini", "ollama", "mock"] = "mock"
+    gemini_api_key: str = ""
+    gemini_text_model: str = ""
     seed_default_password: str = ""
     frontend_build_dir: str = "../frontend/build"
     # Empty switches the embedding stage of the intent classifier off
