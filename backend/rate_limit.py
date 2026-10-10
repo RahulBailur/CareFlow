@@ -8,3 +8,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 def auth_limit() -> str:
     return get_settings().rate_limit_auth
+
+
+def chat_limit() -> str:
+    return get_settings().rate_limit_chat

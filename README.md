@@ -40,7 +40,7 @@
 > CareFlow uses synthetic data only. The Gemini free tier allows Google to use submitted content to improve its products, so no real patient data or real voice recordings belong here.
 
 > [!NOTE]
-> **Project status:** milestones **M1** and **M2** are complete: login, booking, visit history, the live queue and the doctor's queue controls, running in Docker Compose with MongoDB and Redis. The voice agent is still to come. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
+> **Project status:** milestones **M1** and **M2** are complete: login, booking, visit history, the live queue and the doctor's queue controls, running in Docker Compose with MongoDB and Redis. CareBot answers text turns through `POST /api/chat` with four specialist agents; it has no chat window in the app yet, and voice is still to come. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
 
 ## 💡 The Problem
 
@@ -356,7 +356,7 @@ docker compose exec ollama ollama pull <small-instruct-model>
 
 | Variable | Purpose | Example |
 |---|---|---|
-| `LLM_PROVIDER` | Which LLM backend to use | `gemini` · `ollama` · `mock` |
+| `LLM_PROVIDER` | Which LLM backend to use. `mock` means no model: CareBot answers from rules only | `gemini` · `mock` |
 | `GEMINI_API_KEY` | Free key from Google AI Studio | — |
 | `VOICE_PIPELINE_DEFAULT` | Pipeline used on first load | `live` · `cascade` |
 | `WHISPER_MODEL` | faster-whisper model size | `small` |
@@ -399,7 +399,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 | `GET` | `/api/admin/stats` | Admin | Department load |
 | `GET` | `/api/admin/analytics` | Admin | Latency, intent mix, fallback rate |
 | `GET` | `/api/hospital/config` | — | Public hospital info |
-| `POST` | `/api/chat` | JWT | CareBot text turn |
+| `POST` | `/api/chat` | JWT | CareBot text turn (rate-limited) |
 | `WS` | `/ws/voice?pipeline=live\|cascade` | JWT | CareBot voice stream |
 
 </details>
@@ -412,7 +412,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 |:---:|---|---|:---:|
 | ✅ | **M1 — Foundation** | Repo, Docker Compose, CI, pre-commit, models, auth, seed data, demo banner | `v0.1.0` |
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
-| 🚧 | **M3 — Agents & Pipeline B** | Intent classifier, guardrails filter + tests, eval set ✅ · specialist agents, chat, cascaded voice pipeline, barge-in ⬜ | `v0.3.0` |
+| 🚧 | **M3 — Agents & Pipeline B** | Intent classifier, guardrails + tests, eval set, specialist agents, text chat API ✅ · chat window, cascaded voice pipeline, barge-in ⬜ | `v0.3.0` |
 | ⬜ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
 | ⬜ | **M5 — Analytics & demo** | Analytics page, demo deployment, benchmarks, demo GIF, "hardest problem" write-up | `v0.5.0` |
 

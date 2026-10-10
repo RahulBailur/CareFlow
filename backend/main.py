@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import socketio
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -11,7 +12,8 @@ from config import get_settings
 from database import close_db, init_db
 from frontend_app import mount_frontend
 from rate_limit import limiter
-from routes import appointments, auth, doctors, hospital
+from routes import appointments, auth, chat, doctors, hospital
+from services.appointments import BookingError
 from sockets import sio
 
 
@@ -27,10 +29,17 @@ api = FastAPI(title="CareFlow", version="0.2.0", lifespan=lifespan)
 api.state.limiter = limiter
 api.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
+
+@api.exception_handler(BookingError)
+async def booking_error(request: Request, error: BookingError) -> JSONResponse:
+    return JSONResponse({"detail": error.detail}, status_code=error.status_code)
+
+
 api.include_router(auth.router)
 api.include_router(appointments.router)
 api.include_router(doctors.router)
 api.include_router(hospital.router)
+api.include_router(chat.router)
 
 
 @api.get("/api/health", tags=["health"])
