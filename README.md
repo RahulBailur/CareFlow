@@ -283,6 +283,21 @@ A reply about the hospital itself (timings, a department's location, the emergen
 - **Never cached:** anything about a patient (records, bookings, symptoms), and questions that lean on the conversation ("Where is it?"). Keys are hashes, so a patient's wording is not stored.
 - A first-time question still pays for the LLM. The cache only helps what has been asked before, in the same words and language.
 
+#### Optimisation 3 — look the facts up before asking the model (measured)
+
+The Triage, Records and Support agents made two LLM calls per turn: one in which the model asked for a lookup, and one to phrase the answer. None of those lookups needs the model's judgement (hospital information, the patient's own visits, symptoms to a department), so the server now does them first and hands the results over. Those turns take one call. Booking keeps its tools, because there the model has to choose dates and slots. Same 19 questions, cache empty in both runs; raw numbers in [`preload-facts.json`](backend/eval/results/preload-facts.json).
+
+| P50 | Before | After |
+|---|---:|---:|
+| LLM stage, the 12 triage / records / support turns | 2.12 s | **0.98 s** |
+| Time to first audio, those 12 turns | 4.64 s | **3.70 s** |
+| LLM stage, all 19 turns | 2.12 s | 1.20 s |
+| **Time to first audio, all 19 turns** | 4.72 s | **4.03 s** |
+
+- **P95 got worse, and not because of this change:** one Gemini request hung until the 20 s timeout and that turn fell back to a rule-based reply (22.4 s to first audio). A shorter timeout and a failover chain are the next piece of work.
+- The 5 booking turns still make two or more calls (2.1 s at P50).
+- The guardrails are unchanged: identity still comes from the session, the model is simply never offered a records tool to aim at anyone, and the triage filter still checks every reply.
+
 #### Intent classifier (measured)
 
 How often the local classifier picks the right agent, and how often it is sure enough to skip the LLM. Run with `python eval/run_eval.py --classifier --set all`.

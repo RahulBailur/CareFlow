@@ -13,6 +13,7 @@ from agents.orchestrator import run_text_turn
 from models.appointment import Appointment, AppointmentStatus
 from models.conversation_turn import ConversationTurn
 from models.hospital_config import Department, HospitalConfig
+from models.user import Role
 from services.llm import LLMResponse, LLMUnavailable, Message, MockLLM, ToolCall, ToolSpec
 from tests.helpers import auth, make_appointment, make_doctor, make_user, slot
 from time_utils import IST, as_utc
@@ -224,7 +225,8 @@ async def test_booking_agent_books_through_its_tools(client: AsyncClient) -> Non
     assert slots_message.tool_result["doctors"][0]["doctor_name"] == "Dr. Tool"
 
 
-async def test_each_agent_only_offers_its_own_tools(client: AsyncClient) -> None:
+async def test_the_model_is_only_offered_tools_where_it_must_choose(client: AsyncClient) -> None:
+    """Booking needs the model to pick slots. The other agents get their facts handed over."""
     patient = await make_user()
     offered: dict[str, set[str]] = {}
     for question in ("book an appointment", "I have a fever", "my prescription", "OPD timings"):
@@ -232,10 +234,63 @@ async def test_each_agent_only_offers_its_own_tools(client: AsyncClient) -> None
         result = await run_text_turn(patient, question, "session-1", llm, KEYWORDS_ONLY)
         offered[result.intent.value] = {tool.name for tool in llm.calls[0][2]}
 
-    assert offered["triage"] == {"symptom_to_department"}
-    assert offered["records"] == {"get_my_visits"}
-    assert offered["support"] == {"get_hospital_info"}
+    assert offered["triage"] == offered["records"] == offered["support"] == set()
     assert "book_slot" in offered["booking"] and "get_my_visits" not in offered["booking"]
+
+
+@pytest.mark.parametrize(
+    ("question", "tool", "expected_fact"),
+    [
+        ("What are the OPD timings?", "get_hospital_info", "9 am to 1 pm, Monday to Saturday"),
+        ("I have chest pain", "symptom_to_department", '"department": "Cardiology"'),
+        ("Show me my last prescription", "get_my_visits", "Synthetic note 7"),
+    ],
+)
+async def test_facts_are_looked_up_first_so_the_turn_takes_one_model_call(
+    client: AsyncClient, question: str, tool: str, expected_fact: str
+) -> None:
+    await seed_hospital()
+    patient, doctor = await make_user(), await make_doctor()
+    await make_appointment(patient, doctor, slot(-10), AppointmentStatus.DONE, "Synthetic note 7")
+    llm = ScriptedLLM(say("A reply."))
+
+    result = await run_text_turn(patient, question, "session-1", llm, KEYWORDS_ONLY)
+
+    assert len(llm.calls) == 1 and result.reply == "A reply."
+    assert result.tools_called == [tool]  # run by the server, not asked for by the model
+    system = llm.calls[0][0]
+    assert tool in system and expected_fact in system
+
+
+async def test_a_triage_follow_up_is_routed_with_the_turn_before_it(client: AsyncClient) -> None:
+    patient = await make_user()
+    await run_text_turn(patient, "I have chest pain", "s-1", ScriptedLLM(say("Cardiology.")))
+
+    llm = ScriptedLLM(say("Still Cardiology."))
+    await run_text_turn(patient, "and now it hurts more", "s-1", llm, KEYWORDS_ONLY)
+
+    assert '"department": "Cardiology"' in llm.calls[0][0]
+
+
+async def test_a_new_symptom_is_not_dragged_back_to_the_old_department(
+    client: AsyncClient,
+) -> None:
+    patient = await make_user()
+    await run_text_turn(patient, "I have chest pain", "s-1", ScriptedLLM(say("Cardiology.")))
+
+    llm = ScriptedLLM(say("Orthopedics."))
+    await run_text_turn(patient, "my knee hurts as well", "s-1", llm, KEYWORDS_ONLY)
+
+    assert '"department": "Orthopedics"' in llm.calls[0][0]
+
+
+async def test_a_lookup_error_is_given_to_the_model_as_a_fact(client: AsyncClient) -> None:
+    doctor = await make_user(Role.DOCTOR)
+    llm = ScriptedLLM(say("Only patients have a visit history."))
+
+    await run_text_turn(doctor, "Show me my last prescription", "s-1", llm, KEYWORDS_ONLY)
+
+    assert "Only a logged-in patient can do this." in llm.calls[0][0]
 
 
 async def test_a_tool_error_is_returned_to_the_model_not_raised(client: AsyncClient) -> None:

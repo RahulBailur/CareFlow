@@ -138,7 +138,12 @@ async def test_a_spoken_question_gets_a_spoken_answer(ws_url: str) -> None:
     assert "9 am to 1 pm" in reply["text"] and reply["intent"] == "support"
     assert caller.audio, "expected the reply as audio"
     states = [event["state"] for event in caller.events if event["type"] == "state"]
-    assert states == ["IDLE", "LISTENING", "TRANSCRIBING", "THINKING", "SPEAKING"]
+    assert (
+        states
+        == (
+            "IDLE LISTENING TRANSCRIBING THINKING TOOL_EXECUTION GENERATING_RESPONSE SPEAKING"
+        ).split()
+    )
 
     await caller.ws.send_json({"type": "playback_done"})
     await caller.until("state", state="WAITING_FOR_NEXT_INPUT")
