@@ -7,7 +7,7 @@ import logging
 import secrets
 from dataclasses import dataclass, field
 
-from agents.base import Agent, run_agent
+from agents.base import Agent, Progress, run_agent
 from agents.booking_agent import BOOKING_AGENT
 from agents.general_agent import GENERAL_AGENT
 from agents.guardrails import guard_triage_reply
@@ -51,7 +51,8 @@ Routing = str  # "keywords" | "embedding" | "llm" | "previous" | "guess"
 class TurnResult:
     reply: str
     intent: Intent
-    language: Language
+    language: Language  # what the patient wrote or said
+    reply_language: Language  # what the reply is in: rule-based replies are English
     routed_by: Routing
     used_llm: bool
     disclaimer: str | None = None
@@ -89,6 +90,7 @@ async def run_text_turn(
     session_id: str,
     llm: LLMProvider | None = None,
     classifier: IntentClassifier | None = None,
+    progress: Progress | None = None,
 ) -> TurnResult:
     assert user.id is not None  # noqa: S101 — loaded from the database
     llm = llm or get_llm()
@@ -97,26 +99,28 @@ async def run_text_turn(
     previous = await memory.last_intent(user.id, session_id)
 
     intent, routed_by = await _route(local, text, history, previous, llm)
+    if progress:
+        await progress("routed")
     context = ToolContext(
         user=user,
         language=local.language,
         session_id=session_id,
         turn_id=secrets.token_hex(8),
     )
-    answer = await run_agent(AGENTS[intent], context, text, history, llm)
+    answer = await run_agent(AGENTS[intent], context, text, history, llm, progress)
     await expire_older_proposals(context)
 
     result = TurnResult(
         reply=answer.text,
         intent=intent,
         language=local.language,
+        reply_language=local.language if answer.used_llm else "en",
         routed_by=routed_by,
         used_llm=answer.used_llm or routed_by == "llm",
         tools_called=answer.tools_called,
     )
     if intent == Intent.TRIAGE:
-        # Rule-based replies are English, so the disclaimer matches the reply, not the question
-        guarded = guard_triage_reply(answer.text, local.language if answer.used_llm else "en")
+        guarded = guard_triage_reply(answer.text, result.reply_language)
         result.reply, result.disclaimer, result.blocked = (
             guarded.text,
             guarded.disclaimer,

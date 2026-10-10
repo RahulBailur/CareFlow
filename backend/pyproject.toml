@@ -19,12 +19,19 @@ dependencies = [
     "slowapi>=0.1.9",
     "python-socketio>=5.11",
     "httpx>=0.27",
+    "numpy>=2.0",
 ]
 
 [project.optional-dependencies]
 # Sentence embeddings for the intent classifier (ONNX on CPU, no PyTorch)
 ml = [
     "fastembed>=0.7",
+]
+# Speech to text with the Silero VAD model it ships, and the local fallback voice.
+# Note: piper-tts is GPL-3.0. It is optional and only loaded when it is installed.
+voice = [
+    "faster-whisper>=1.1",
+    "piper-tts>=1.3",
 ]
 dev = [
     "pytest>=8",
@@ -46,7 +53,7 @@ py-modules = [
     "sockets",
     "time_utils",
 ]
-packages = ["agents", "eval", "memory", "models", "routes", "scripts", "services", "tools"]
+packages = ["agents", "eval", "memory", "models", "routes", "scripts", "services", "tools", "voice"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -85,5 +92,5 @@ explicit_package_bases = true
 exclude = ["\\.venv", "build"]
 
 [[tool.mypy.overrides]]
-module = ["slowapi.*", "mongomock_motor.*", "socketio.*", "fastembed.*"]
+module = ["slowapi.*", "mongomock_motor.*", "socketio.*", "fastembed.*", "faster_whisper.*", "onnxruntime.*", "piper.*", "huggingface_hub.*"]
 ignore_missing_imports = true

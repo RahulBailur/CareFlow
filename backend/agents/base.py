@@ -27,6 +27,8 @@ State only facts returned by your tools. Never invent doctors, slots, timings or
 Say times exactly as the tools give them in local_time."""
 
 Fallback = Callable[[ToolContext, str], Awaitable[str]]
+# Told "routed", "tool" and "generating" as a turn moves along (drives the voice UI)
+Progress = Callable[[str], Awaitable[None]]
 
 
 @dataclass(frozen=True)
@@ -54,7 +56,12 @@ def system_prompt(agent: Agent, language: Language) -> str:
 
 
 async def run_agent(
-    agent: Agent, context: ToolContext, text: str, history: list[Message], llm: LLMProvider
+    agent: Agent,
+    context: ToolContext,
+    text: str,
+    history: list[Message],
+    llm: LLMProvider,
+    progress: Progress | None = None,
 ) -> AgentReply:
     """Let the LLM answer with this agent's tools; fall back to rules if it cannot."""
     by_name = {tool.name: tool for tool in agent.tools}
@@ -72,6 +79,8 @@ async def run_agent(
             messages.append(
                 Message("assistant", response.text, response.tool_calls, raw=response.raw)
             )
+            if progress:
+                await progress("tool")
             for call in response.tool_calls:
                 tool = by_name.get(call.name)
                 # A tool outside this agent's set is refused, whatever the model asks for
@@ -84,6 +93,8 @@ async def run_agent(
                 if note := outcome_note(call.name, result):
                     notes.append(note)
                 messages.append(Message("tool", tool_name=call.name, tool_result=result))
+            if progress:
+                await progress("generating")
     except LLMUnavailable as error:
         logger.warning("LLM unavailable for the %s agent: %s", agent.intent.value, error)
 

@@ -13,20 +13,26 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/backend \
-    FRONTEND_BUILD_DIR=/app/frontend/build
+    FRONTEND_BUILD_DIR=/app/frontend/build \
+    HF_HOME=/models/huggingface \
+    FASTEMBED_CACHE_PATH=/models/fastembed
 
 WORKDIR /app/backend
 
 # Dependencies first, so editing application code does not reinstall them
 COPY backend/pyproject.toml ./
-RUN python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']))" > /tmp/requirements.txt \
+# The base dependencies plus the ml (intent embeddings) and voice (speech to text) extras
+RUN python -c "import tomllib; p = tomllib.load(open('pyproject.toml', 'rb'))['project']; o = p['optional-dependencies']; print('\n'.join(p['dependencies'] + o['ml'] + o['voice']))" > /tmp/requirements.txt \
     && pip install --no-cache-dir -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
 COPY backend/ ./
 COPY --from=frontend /frontend/build /app/frontend/build
 
-RUN useradd --system --no-create-home careflow
+# Speech and embedding models are downloaded on first use into this directory.
+# Compose mounts a volume here so they survive rebuilds.
+RUN useradd --system --no-create-home careflow \
+    && mkdir -p /models && chown careflow /models
 USER careflow
 
 EXPOSE 8000

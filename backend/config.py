@@ -21,6 +21,18 @@ class Settings(BaseSettings):
     llm_provider: Literal["gemini", "ollama", "mock"] = "mock"
     gemini_api_key: str = ""
     gemini_text_model: str = ""
+    gemini_tts_model: str = ""
+    # Voice. The safe defaults need no model; real runs set these in .env
+    stt_provider: Literal["faster_whisper", "mock"] = "mock"
+    tts_provider: Literal["gemini", "piper", "mock"] = "mock"
+    piper_voice: str = "en_US-lessac-medium"
+    vad_provider: Literal["silero", "energy"] = "energy"
+    whisper_model: str = "small"
+    whisper_compute_type: str = "int8"
+    whisper_cpu_threads: int = 0  # 0 lets CTranslate2 choose (4 at most)
+    vad_silence_ms: int = 500
+    tts_chunking: Literal["sentence", "reply"] = "sentence"
+    rate_limit_voice_sessions: str = "5/minute"
     seed_default_password: str = ""
     frontend_build_dir: str = "../frontend/build"
     # Empty switches the embedding stage of the intent classifier off
