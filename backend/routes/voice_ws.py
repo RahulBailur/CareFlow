@@ -1,7 +1,8 @@
 """CareBot voice over a WebSocket: /ws/voice?pipeline=cascade
 
 Client -> server
-  first message, text:  {"type": "auth", "token": "<JWT>"}   (the token is never in the URL)
+  first message, text:  {"type": "auth", "token": "<JWT>", "session_id": "<optional>"}
+                        (the token is never in the URL)
   binary:               microphone audio, PCM16 mono 16 kHz little-endian, any chunk size
   text:                 {"type": "playback_done"} | {"type": "end"}
 
@@ -15,6 +16,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import re
 import secrets
 import time
 from collections import defaultdict, deque
@@ -40,6 +42,8 @@ MAX_AUDIO_MESSAGE_BYTES = 64 * 1024  # two seconds of 16 kHz PCM16
 # WebSocket close codes in the application range
 UNAUTHORIZED, UNSUPPORTED, TOO_MANY = 4401, 4400, 4429
 
+SESSION_ID = re.compile(r"[A-Za-z0-9_-]{8,64}")  # the same shape /api/chat accepts
+
 _recent_sessions: dict[str, deque[float]] = defaultdict(deque)
 
 
@@ -64,19 +68,24 @@ def _vad() -> Probability:
     return SileroVAD() if get_settings().vad_provider == "silero" else energy_vad()
 
 
-async def _authenticate(websocket: WebSocket) -> Any:
+async def _authenticate(websocket: WebSocket) -> tuple[Any, str | None]:
+    """(user, session to continue). The session ID lets voice carry on a text conversation;
+    memory is keyed by user as well, so naming someone else's session opens nothing."""
     try:
         message = json.loads(await asyncio.wait_for(websocket.receive_text(), AUTH_TIMEOUT_S))
         token = message.get("token") if message.get("type") == "auth" else None
+        session_id = message.get("session_id")
     except (TimeoutError, ValueError, AttributeError, KeyError, RuntimeError, WebSocketDisconnect):
-        return None
-    return await user_from_token(token) if isinstance(token, str) else None
+        return None, None
+    user = await user_from_token(token) if isinstance(token, str) else None
+    valid = isinstance(session_id, str) and SESSION_ID.fullmatch(session_id)
+    return user, session_id if valid else None
 
 
 @router.websocket("/ws/voice")
 async def voice(websocket: WebSocket, pipeline: str = "cascade") -> None:
     await websocket.accept()
-    user = await _authenticate(websocket)
+    user, continued_session = await _authenticate(websocket)
     if user is None:
         return await websocket.close(UNAUTHORIZED, "unauthorized")
     if pipeline != "cascade":
@@ -99,7 +108,7 @@ async def voice(websocket: WebSocket, pipeline: str = "cascade") -> None:
             with contextlib.suppress(RuntimeError, WebSocketDisconnect):
                 await websocket.send_bytes(pcm16)
 
-    session_id = secrets.token_urlsafe(16)
+    session_id = continued_session or secrets.token_urlsafe(16)
     session = VoiceSession(
         user,
         session_id,

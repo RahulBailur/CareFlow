@@ -46,14 +46,19 @@ class Caller:
 
     @classmethod
     async def connect(
-        cls, url: str, user: User | None = None, token: str | None = None
+        cls,
+        url: str,
+        user: User | None = None,
+        token: str | None = None,
+        session_id: str | None = None,
     ) -> "Caller":
         session = aiohttp.ClientSession()
         caller = cls(session, await session.ws_connect(url))
         if user is not None:
             token = create_access_token(user)
         if token is not None:
-            await caller.ws.send_json({"type": "auth", "token": token})
+            auth = {"type": "auth", "token": token}
+            await caller.ws.send_json(auth | ({"session_id": session_id} if session_id else {}))
         return caller
 
     async def until(self, kind: str, **match: Any) -> dict[str, Any]:
@@ -218,3 +223,18 @@ async def test_a_caller_hanging_up_mid_turn_does_not_break_the_server(
     await again.ws.send_bytes(UTTERANCE)
     assert (await again.until("reply"))["intent"] == "support"
     await again.hang_up()
+
+
+async def test_voice_can_continue_a_text_conversation(ws_url: str) -> None:
+    caller = await Caller.connect(ws_url, await make_user(), session_id="text-session-123")
+
+    assert (await caller.until("ready"))["session_id"] == "text-session-123"
+    await caller.hang_up()
+
+
+@pytest.mark.parametrize("session_id", ["short", "../../etc", "x" * 65, "has space in it"])
+async def test_a_malformed_session_id_is_replaced_not_trusted(ws_url: str, session_id: str) -> None:
+    caller = await Caller.connect(ws_url, await make_user(), session_id=session_id)
+
+    assert (await caller.until("ready"))["session_id"] != session_id
+    await caller.hang_up()
