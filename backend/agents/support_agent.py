@@ -5,12 +5,15 @@ from typing import Any
 from agents.base import Agent
 from agents.intent_classifier import normalise
 from agents.intent_data import Intent
-from tools import ToolContext
+from services.llm import Message
+from tools import ToolContext, ToolResult, run_tool
 from tools.support_tools import SUPPORT_TOOLS, get_hospital_info
+
+GET_HOSPITAL_INFO = SUPPORT_TOOLS[0]
 
 INSTRUCTIONS = """You answer questions about the hospital itself: OPD timings, where a \
 department is, the address and the emergency contact.
-- Always call get_hospital_info and answer only from what it returns.
+- Answer only from the hospital information in the facts below.
 - If the answer is not in it, say you do not have that information."""
 
 _EMERGENCY = ("emergency", "ambulance", "helpline", "आपातकालीन", "इमरजेंसी", "एम्बुलेंस", "ತುರ್ತು")
@@ -66,4 +69,8 @@ async def fallback(context: ToolContext, text: str) -> str:
     )
 
 
-SUPPORT_AGENT = Agent(Intent.SUPPORT, INSTRUCTIONS, SUPPORT_TOOLS, fallback)
+async def preload(context: ToolContext, text: str, history: list[Message]) -> dict[str, ToolResult]:
+    return {GET_HOSPITAL_INFO.name: await run_tool(GET_HOSPITAL_INFO, context, {})}
+
+
+SUPPORT_AGENT = Agent(Intent.SUPPORT, INSTRUCTIONS, SUPPORT_TOOLS, fallback, preload)

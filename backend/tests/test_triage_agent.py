@@ -153,4 +153,4 @@ async def test_the_triage_agent_has_no_booking_or_records_tools(client: AsyncCli
     result = await run_text_turn(patient, "I have chest pain", "session-1", llm, KEYWORDS_ONLY)
 
     assert llm.calls[1][1][-1].tool_result == {"error": "book_slot is not available here."}
-    assert result.tools_called == ["book_slot"]
+    assert result.tools_called == ["symptom_to_department", "book_slot"]

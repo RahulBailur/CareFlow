@@ -17,7 +17,7 @@ from models.turn_analytics import TurnAnalytics
 from services.llm import MockLLM
 from services.tts import GeminiTTS, MockTTS, TTSUnavailable
 from tests.helpers import make_user
-from tests.test_chat import ScriptedLLM, call, say, seed_hospital
+from tests.test_chat import ScriptedLLM, say, seed_hospital
 from tests.voice_helpers import UTTERANCE, FakeSTT, FakeTTS, Wire, frames, silence, tone
 from voice import cascade_pipeline
 from voice.audio_utils import (
@@ -262,7 +262,12 @@ async def test_a_full_turn_goes_from_speech_to_spoken_reply(rig: Rig) -> None:
     await rig.session.start()
     await rig.speak()
 
-    assert rig.wire.states == ["IDLE", "LISTENING", "TRANSCRIBING", "THINKING", "SPEAKING"]
+    assert (
+        rig.wire.states
+        == (
+            "IDLE LISTENING TRANSCRIBING THINKING TOOL_EXECUTION GENERATING_RESPONSE SPEAKING"
+        ).split()
+    )
     assert rig.wire.of("transcript")[0]["text"] == "What are the OPD timings?"
     reply = rig.wire.of("reply")[0]
     assert reply["intent"] == "support" and "9 am to 1 pm" in reply["text"]
@@ -309,7 +314,7 @@ async def test_a_second_turn_works_after_the_first(rig: Rig) -> None:
 
 async def test_tool_use_is_shown_as_its_own_states(client: AsyncClient) -> None:
     await seed_hospital()
-    llm = ScriptedLLM(call("get_hospital_info"), say("We open at nine."))
+    llm = ScriptedLLM(say("We open at nine."))  # the lookup itself is the tool step
     rig = Rig(await make_user(), llm)
 
     await rig.speak()

@@ -1,5 +1,6 @@
 """The tool-calling loop every specialist agent shares."""
 
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -8,7 +9,7 @@ from agents.intent_classifier import Language
 from agents.intent_data import Intent
 from services.llm import LLMProvider, LLMUnavailable, Message
 from time_utils import IST, now_utc
-from tools import OUTCOME_KEYS, Tool, ToolContext, outcome_note, run_tool
+from tools import OUTCOME_KEYS, Tool, ToolContext, ToolResult, outcome_note, run_tool
 from tools.confirmation import drop_proposals
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,13 @@ Say times exactly as the tools give them in local_time."""
 Fallback = Callable[[ToolContext, str], Awaitable[str]]
 # Told "routed", "tool" and "generating" as a turn moves along (drives the voice UI)
 Progress = Callable[[str], Awaitable[None]]
+# Looks up what an agent needs before the model is asked: {tool name: its result}
+Preload = Callable[[ToolContext, str, list[Message]], Awaitable[dict[str, ToolResult]]]
+
+FACTS_HEADER = (
+    "Facts for this turn, already looked up from the hospital's systems. Answer only from "
+    "these, and if they hold an error, tell the patient plainly:"
+)
 
 
 @dataclass(frozen=True)
@@ -38,6 +46,10 @@ class Agent:
     tools: tuple[Tool, ...]
     # Rule-based reply for when no LLM answer is available. Always in English.
     fallback: Fallback
+    # For an agent whose tools need no decision from the model (their arguments are the
+    # patient's own words, or nothing): the server runs them first and hands over the
+    # results, so the turn costs one model call instead of two. No tools are then offered.
+    preload: Preload | None = None
 
 
 @dataclass
@@ -49,10 +61,15 @@ class AgentReply:
     notes: list[str] = field(default_factory=list)
 
 
-def system_prompt(agent: Agent, language: Language) -> str:
+def system_prompt(
+    agent: Agent, language: Language, facts: dict[str, ToolResult] | None = None
+) -> str:
     today = now_utc().astimezone(IST)
     rules = COMMON_RULES.format(today=f"{today:%A %d %B %Y}", language=LANGUAGE_NAMES[language])
-    return f"{rules}\n\n{agent.instructions}"
+    prompt = f"{rules}\n\n{agent.instructions}"
+    if facts is not None:
+        prompt += f"\n\n{FACTS_HEADER}\n{json.dumps(facts, ensure_ascii=False, default=str)}"
+    return prompt
 
 
 async def run_agent(
@@ -69,9 +86,19 @@ async def run_agent(
     messages = [*history, Message("user", text)]
     called: list[str] = []
     notes: list[str] = []
+    facts: dict[str, ToolResult] | None = None
+    if agent.preload is not None:
+        if progress:
+            await progress("tool")
+        facts = await agent.preload(context, text, history)
+        called.extend(facts)
+        by_name, specs = {}, []  # the facts are in hand: nothing left to call
+        if progress:
+            await progress("generating")
+    prompt = system_prompt(agent, context.language, facts)
     try:
         for _ in range(MAX_TOOL_ROUNDS):
-            response = await llm.generate(system_prompt(agent, context.language), messages, specs)
+            response = await llm.generate(prompt, messages, specs)
             if not response.tool_calls:
                 if response.text.strip():
                     return AgentReply(response.text.strip(), True, called, notes)

@@ -94,10 +94,13 @@ async def test_a_prompt_asking_for_someone_elses_records_still_gets_only_the_cal
         IntentClassifier(),
     )
 
-    tool_result = llm.calls[1][1][-1].tool_result
-    assert tool_result is not None
-    assert "other note" not in str(tool_result)
-    assert "caller note" in str(tool_result)
+    # The only records the model ever sees are the caller's own, looked up by the server
+    everything_sent = str(llm.calls)
+    assert "caller note" in llm.calls[0][0]
+    assert "other note" not in everything_sent
+    # It has no records tool to aim at anyone: the attempt is refused
+    assert llm.calls[0][2] == []
+    assert llm.calls[1][1][-1].tool_result == {"error": "get_my_visits is not available here."}
 
 
 async def test_the_rule_based_records_reply_is_scoped_too(client: AsyncClient) -> None:
