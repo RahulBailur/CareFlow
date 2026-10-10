@@ -14,6 +14,7 @@ os.environ["FRONTEND_BUILD_DIR"] = "no-frontend-build-in-tests"
 os.environ["LLM_PROVIDER"] = "mock"
 os.environ["REDIS_URL"] = ""  # tests that want a cache build one on fakeredis
 os.environ["GEMINI_API_KEY"] = ""
+os.environ["OLLAMA_MODEL"] = ""
 os.environ["INTENT_EMBEDDING_MODEL"] = ""
 os.environ["STT_PROVIDER"] = "mock"
 os.environ["TTS_PROVIDER"] = "mock"

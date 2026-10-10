@@ -100,7 +100,12 @@ async def test_a_tool_round_trip_replays_the_models_own_turn_and_groups_results(
         "s",
         [
             Message("user", "go"),
-            Message("assistant", tool_calls=[ToolCall("a", {}), ToolCall("b", {})], raw=raw_turn),
+            Message(
+                "assistant",
+                tool_calls=[ToolCall("a", {}), ToolCall("b", {})],
+                raw=raw_turn,
+                provider="gemini",
+            ),
             Message("tool", tool_name="a", tool_result={"x": 1}),
             Message("tool", tool_name="b", tool_result={"y": 2}),
         ],

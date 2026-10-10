@@ -4,6 +4,7 @@ Agents talk to `LLMProvider` only. When a provider cannot answer (no key, quota,
 bad response) it raises `LLMUnavailable`, and the caller falls back to rule-based replies.
 """
 
+import json
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Literal, Protocol
@@ -41,7 +42,9 @@ class Message:
     tool_name: str = ""  # tool turns
     tool_result: dict[str, Any] | None = None  # tool turns
     # The provider's own form of an assistant turn, replayed verbatim on the next request
+    # to that same provider (a turn can move to another one halfway through)
     raw: Any = None
+    provider: str = ""
 
 
 @dataclass
@@ -49,6 +52,7 @@ class LLMResponse:
     text: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
     raw: Any = None
+    provider: str = ""  # which model answered
 
 
 class LLMProvider(Protocol):
@@ -93,7 +97,7 @@ def _gemini_contents(messages: list[Message]) -> list[dict[str, Any]]:
         if message.role == "user":
             contents.append({"role": "user", "parts": [{"text": message.text}]})
         elif message.role == "assistant":
-            if message.raw is not None:
+            if message.raw is not None and message.provider == GeminiLLM.name:
                 contents.append(message.raw)
                 continue
             parts: list[dict[str, Any]] = [{"text": message.text}] if message.text else []
@@ -124,11 +128,16 @@ class GeminiLLM:
     name = "gemini"
 
     def __init__(
-        self, api_key: str, model: str, transport: httpx.AsyncBaseTransport | None = None
+        self,
+        api_key: str,
+        model: str,
+        transport: httpx.AsyncBaseTransport | None = None,
+        timeout_s: float = REQUEST_TIMEOUT_S,
     ) -> None:
         self._api_key = api_key
         self._model = model
         self._transport = transport
+        self._timeout_s = timeout_s
 
     async def generate(
         self, system: str, messages: list[Message], tools: list[ToolSpec] | None = None
@@ -155,7 +164,7 @@ class GeminiLLM:
             ]
         try:
             async with httpx.AsyncClient(
-                transport=self._transport, timeout=REQUEST_TIMEOUT_S
+                transport=self._transport, timeout=self._timeout_s
             ) as client:
                 response = await client.post(
                     GEMINI_URL.format(model=self._model),
@@ -179,12 +188,117 @@ class GeminiLLM:
             for p in parts
             if "functionCall" in p
         ]
-        return LLMResponse(text=text, tool_calls=calls, raw=content)
+        return LLMResponse(text=text, tool_calls=calls, raw=content, provider=self.name)
+
+
+def _ollama_messages(system: str, messages: list[Message]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = [{"role": "system", "content": system}]
+    for message in messages:
+        if message.role == "user":
+            out.append({"role": "user", "content": message.text})
+        elif message.role == "assistant":
+            turn: dict[str, Any] = {"role": "assistant", "content": message.text}
+            if message.tool_calls:
+                turn["tool_calls"] = [
+                    {"function": {"name": call.name, "arguments": call.args}}
+                    for call in message.tool_calls
+                ]
+            out.append(turn)
+        else:
+            out.append(
+                {
+                    "role": "tool",
+                    "tool_name": message.tool_name,
+                    "content": json.dumps(message.tool_result or {}, ensure_ascii=False),
+                }
+            )
+    return out
+
+
+class OllamaLLM:
+    """A small model running locally through Ollama: slower and weaker, but always there."""
+
+    name = "ollama"
+
+    def __init__(
+        self,
+        url: str,
+        model: str,
+        timeout_s: float = 30.0,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        self._url, self._model = url.rstrip("/"), model
+        self._timeout_s, self._transport = timeout_s, transport
+
+    async def generate(
+        self, system: str, messages: list[Message], tools: list[ToolSpec] | None = None
+    ) -> LLMResponse:
+        if not self._url or not self._model:
+            raise LLMUnavailable("OLLAMA_URL and OLLAMA_MODEL must both be set")
+        body: dict[str, Any] = {
+            "model": self._model,
+            "stream": False,
+            "messages": _ollama_messages(system, messages),
+            "options": {"temperature": 0.2},
+        }
+        if tools:
+            body["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    },
+                }
+                for tool in tools
+            ]
+        try:
+            async with httpx.AsyncClient(
+                transport=self._transport, timeout=self._timeout_s
+            ) as client:
+                response = await client.post(f"{self._url}/api/chat", json=body)
+        except httpx.HTTPError as error:
+            raise LLMUnavailable(f"Ollama request failed: {type(error).__name__}") from error
+        if response.status_code != httpx.codes.OK:
+            raise LLMUnavailable(f"Ollama returned HTTP {response.status_code}")
+        try:
+            message = response.json()["message"]
+            calls = []
+            for call in message.get("tool_calls") or []:
+                arguments = call["function"].get("arguments") or {}
+                if isinstance(arguments, str):
+                    arguments = json.loads(arguments)
+                calls.append(ToolCall(call["function"]["name"], dict(arguments)))
+            text = message.get("content") or ""
+        except (KeyError, TypeError, ValueError) as error:
+            raise LLMUnavailable("Ollama returned no usable message") from error
+        return LLMResponse(text=text, tool_calls=calls, provider=self.name)
 
 
 @lru_cache
 def get_llm() -> LLMProvider:
+    """The fallback chain: `LLM_PROVIDER` first, the other real provider behind it."""
     settings = get_settings()
-    if settings.llm_provider == "gemini":
-        return GeminiLLM(settings.gemini_api_key, settings.gemini_text_model)
-    return MockLLM()
+    if settings.llm_provider == "mock":
+        return MockLLM()
+    from services.failover import CircuitBreaker, FailoverLLM
+
+    gemini: LLMProvider = GeminiLLM(
+        settings.gemini_api_key, settings.gemini_text_model, timeout_s=settings.llm_timeout_s
+    )
+    chain = [gemini]
+    if settings.ollama_model:  # the local tier only exists once a model is named
+        ollama = OllamaLLM(settings.ollama_url, settings.ollama_model, settings.ollama_timeout_s)
+        chain = [ollama, gemini] if settings.llm_provider == "ollama" else [gemini, ollama]
+    return FailoverLLM(
+        [
+            (
+                provider,
+                CircuitBreaker(
+                    settings.gemini_breaker_threshold, settings.gemini_breaker_cooldown_s
+                ),
+            )
+            for provider in chain
+        ]
+    )

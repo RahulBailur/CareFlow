@@ -287,6 +287,7 @@ class VoiceSession:
                 routed_by=result.routed_by,
                 used_llm=result.used_llm,
                 cache_hit=result.cached,
+                answered_by=result.answered_by,
                 blocked=result.blocked,
                 tools_called=result.tools_called,
                 stt_provider=self._stt.name,
@@ -303,6 +304,7 @@ class VoiceSession:
                     "routed_by": result.routed_by,
                     "used_llm": result.used_llm,
                     "cache_hit": result.cached,
+                    "answered_by": result.answered_by,
                     "stt_provider": self._stt.name,
                     "tts_provider": voice,
                 }
