@@ -230,26 +230,27 @@ Pipeline A is measured end to end, since its stages happen inside one model.
 
 ### 📊 Benchmarks
 
-> 🚧 **First baseline only.** P50 / P95 over many turns, and before/after numbers for each optimisation (for example, how much TTS sentence streaming cuts TTFA), come with the latency benchmark in M4. That before/after table is the main deliverable of the project.
+> 🚧 **Baseline only so far.** Before/after numbers for each optimisation (for example, how much answering common questions without the LLM cuts time to first audio) are added as the work is done. That before/after table is the main deliverable of the project.
 
-#### Voice pipeline B — first baseline (measured)
+#### Voice pipeline B — baseline (measured)
 
-Three spoken English questions sent to the app over the voice WebSocket, before any optimisation. The questions were synthesised speech, not recorded voices.
+19 spoken English questions, streamed to the app over the voice WebSocket at speaking speed, before any optimisation. Run with `python eval/latency_bench.py`; the raw numbers are in [`backend/eval/results/baseline.json`](backend/eval/results/baseline.json).
 
-| Stage | Turn 1 | Turn 2 | Turn 3 |
-|---|---:|---:|---:|
-| End-of-speech detection | 0.5 s | 0.5 s | 0.5 s |
-| Speech to text (Whisper `base`) | 8.7 s | 6.3 s | 3.6 s |
-| Routing | 0.2 s | 0.05 s | 0.01 s |
-| LLM, tool call included | 13.9 s | 15.4 s | 13.4 s |
-| TTS first chunk (Piper) | 4.4 s | 3.6 s | 0.5 s |
-| **Time to first audio** | **27.7 s** | **25.9 s** | **18.1 s** |
+| Stage | P50 | P95 |
+|---|---:|---:|
+| End-of-speech detection | 0.55 s | 0.65 s |
+| Speech to text (Whisper `base`, 8 threads) | 4.12 s | 7.75 s |
+| Routing | 0.01 s | 4.20 s |
+| LLM, tools included (Gemini Flash-Lite) | 2.04 s | 4.00 s |
+| TTS first chunk (Piper) | 0.77 s | 3.24 s |
+| **Time to first audio** | **7.94 s** | **13.59 s** |
 
-- **This is far from the 2.5 s target**, and it is three turns, not a P50 or P95. It is the "before" column that the optimisation work in M4 starts from.
-- **The LLM was the largest part.** A plain Gemini request with no tools took 4 to 11 s on the free tier that day, and each of these turns made two.
-- **Whisper `small`, the planned model, was too slow here**: 10 to 20 s per utterance on this laptop, against about 3 s for `base` outside Docker. `base` mis-heard "cardiology" once and still routed correctly.
-- **Gemini TTS ran out of free quota** (HTTP 429) after a handful of requests, so every reply above was spoken by the local Piper fallback.
-- Hardware: an 8-thread laptop CPU, with the app in Docker Desktop on Windows.
+- **The targets are 2.5 s (P50) and 4.0 s (P95), so this is about three times too slow.** It is the "before" column for the optimisation work that follows.
+- **Speech to text is the largest stage**, at about half the wait. Whisper `small`, the planned model, was slower still on this laptop (10 to 20 s per utterance), so `base` is used.
+- **With 19 turns, P95 is the slowest turn.** The 4.2 s routing figure is the one turn the local classifier handed to the LLM; the other 18 were routed locally in about 10 ms.
+- **Every reply was spoken by Piper.** Gemini TTS was out of free quota (HTTP 429) for the whole run.
+- **The LLM is not steady on the free tier.** In an earlier three-turn check, plain Gemini requests took 4 to 11 s and time to first audio was 18 to 28 s.
+- The questions are synthesised speech, not recorded voices, and all in English. Hardware: an 8-thread laptop CPU, with the app in Docker Desktop on Windows.
 
 #### Intent classifier (measured)
 
@@ -273,7 +274,7 @@ How often the local classifier picks the right agent, and how often it is sure e
 | `eval/run_eval.py --classifier` | Intent accuracy of the local classifier on labelled utterances (EN / HI / KN / code-mixed) — results above |
 | `eval/run_eval.py --live` | End-to-end tool-call correctness with the real LLM |
 | `eval/stt_wer.py` | faster-whisper word error rate at 16 kHz vs 8 kHz phone-grade audio, per language |
-| `eval/latency_bench.py` | P50 / P95 per stage for both pipelines |
+| `eval/latency_bench.py` | P50 / P95 per stage for the voice pipeline — baseline above |
 | `loadtest/locustfile.py` | P95 response time for 20–50 concurrent text sessions |
 
 ---
