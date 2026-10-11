@@ -46,7 +46,8 @@ MAX_SESSION_S = 10 * 60
 MAX_AUDIO_MESSAGE_BYTES = 64 * 1024  # two seconds of 16 kHz PCM16
 
 # WebSocket close codes in the application range
-UNAUTHORIZED, UNSUPPORTED, TOO_MANY = 4401, 4400, 4429
+UNAUTHORIZED, UNSUPPORTED, TOO_MANY, VOICE_UNAVAILABLE = 4401, 4400, 4429, 4503
+NO_VOICE = "Voice is not available right now. You can still type your question."
 PIPELINES = ("live", "cascade")
 
 SESSION_ID = re.compile(r"[A-Za-z0-9_-]{8,64}")  # the same shape /api/chat accepts
@@ -98,6 +99,10 @@ async def voice(websocket: WebSocket, pipeline: str = "cascade") -> None:
     if pipeline not in PIPELINES:
         await websocket.send_json({"type": "error", "message": "Unknown pipeline."})
         return await websocket.close(UNSUPPORTED, "unsupported pipeline")
+    if pipeline == "cascade" and not get_settings().voice_cascade_enabled:
+        refusal = "The cascaded voice pipeline is not available here. Use the real-time one."
+        await websocket.send_json({"type": "error", "message": refusal})
+        return await websocket.close(UNSUPPORTED, "cascaded pipeline disabled")
     if not _allow_session(str(user.id)):
         return await websocket.close(TOO_MANY, "too many voice sessions")
 
@@ -155,6 +160,9 @@ async def voice(websocket: WebSocket, pipeline: str = "cascade") -> None:
             fallback_reason = str(error)
             logger.warning("Pipeline A unavailable, using Pipeline B: %s", error)
     if session is None:
+        if not settings.voice_cascade_enabled:
+            await send_json({"type": "error", "message": NO_VOICE})
+            return await websocket.close(VOICE_UNAVAILABLE, "voice unavailable")
         session = cascade()
     ready = {
         "type": "ready",
@@ -171,6 +179,9 @@ async def voice(websocket: WebSocket, pipeline: str = "cascade") -> None:
                 # The Live session was lost mid-conversation: carry on with Pipeline B
                 reason = session.failure
                 await session.close()
+                if not settings.voice_cascade_enabled:
+                    await send_json({"type": "error", "message": NO_VOICE})
+                    break
                 session = cascade()
                 await send_json({"type": "pipeline", "pipeline": "cascade", "reason": reason})
                 await session.start()

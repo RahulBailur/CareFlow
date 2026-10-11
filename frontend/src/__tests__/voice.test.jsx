@@ -265,3 +265,12 @@ describe("VoiceStream", () => {
     expect(calls.micStopped).toBe(1);
   });
 });
+
+test.each([
+  [4400, /not available here/],
+  [4503, /still type your question/],
+])("a voice pipeline that is switched off (%i) is explained", (code, expected) => {
+  const closed = voiceReducer({ ...initialVoice, phase: "on" }, { type: "closed", code });
+
+  expect(closed.error).toMatch(expected);
+});
