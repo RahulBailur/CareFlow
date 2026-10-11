@@ -115,11 +115,81 @@ async def test_audio_sent_before_authenticating_is_refused(ws_url: str) -> None:
     await caller.hang_up()
 
 
-async def test_the_live_pipeline_is_refused_until_it_exists(ws_url: str) -> None:
+async def test_an_unknown_pipeline_is_refused(ws_url: str) -> None:
+    caller = await Caller.connect(f"{ws_url}?pipeline=telepathy", await make_user())
+
+    assert (await caller.until("error"))["message"] == "Unknown pipeline."
+    assert await caller.closed_with() == voice_ws.UNSUPPORTED
+    await caller.hang_up()
+
+
+async def test_pipeline_a_that_cannot_open_falls_back_to_b_on_the_same_connection(
+    ws_url: str,
+) -> None:
+    """No Live model is configured in tests, so asking for it lands on the cascade."""
+    await seed_hospital()
     caller = await Caller.connect(f"{ws_url}?pipeline=live", await make_user())
 
-    assert "cascade" in (await caller.until("error"))["message"]
-    assert await caller.closed_with() == voice_ws.UNSUPPORTED
+    ready = await caller.until("ready")
+    assert ready["pipeline"] == "cascade" and "GEMINI_LIVE_MODEL" in ready["fallback_reason"]
+
+    await caller.ws.send_bytes(UTTERANCE)
+    assert (await caller.until("reply"))["intent"] == "support"
+    await caller.hang_up()
+
+
+async def test_pipeline_a_runs_over_the_same_socket_protocol(
+    ws_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.test_live_pipeline import DONE, FakeLive, audio, heard, said
+
+    live = FakeLive()
+
+    async def connect(setup: dict[str, Any]) -> FakeLive:
+        return live
+
+    monkeypatch.setattr(voice_ws, "connect_gemini_live", connect)
+    caller = await Caller.connect(f"{ws_url}?pipeline=live", await make_user())
+    ready = await caller.until("ready")
+    assert ready["pipeline"] == "live" and "fallback_reason" not in ready
+
+    await caller.ws.send_bytes(UTTERANCE)
+    live.push(heard("What are the OPD timings?"), audio(), said("We open at nine."), DONE)
+
+    assert (await caller.until("reply"))["text"] == "We open at nine."
+    await caller.until("timing")
+    assert caller.audio and any("realtimeInput" in message for message in live.sent)
+    await caller.hang_up()
+
+
+async def test_losing_pipeline_a_mid_conversation_switches_to_b(
+    ws_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.test_live_pipeline import FakeLive
+    from voice.live_pipeline import LiveUnavailable
+
+    await seed_hospital()
+    live = FakeLive()
+    opened: list[dict[str, Any]] = []
+
+    async def connect(setup: dict[str, Any]) -> FakeLive:
+        if opened:
+            raise LiveUnavailable("quota exhausted")
+        opened.append(setup)
+        return live
+
+    monkeypatch.setattr(voice_ws, "connect_gemini_live", connect)
+    caller = await Caller.connect(f"{ws_url}?pipeline=live", await make_user())
+    assert (await caller.until("ready"))["pipeline"] == "live"
+
+    live.push(None)  # the Live session drops and cannot be reopened
+    await asyncio.sleep(0.2)
+    await caller.ws.send_bytes(UTTERANCE)
+
+    switched = await caller.until("pipeline")
+    assert switched["pipeline"] == "cascade" and "quota exhausted" in switched["reason"]
+    await caller.ws.send_bytes(UTTERANCE)
+    assert (await caller.until("reply"))["intent"] == "support"  # answered by Pipeline B
     await caller.hang_up()
 
 

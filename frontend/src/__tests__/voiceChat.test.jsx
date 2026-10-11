@@ -161,3 +161,68 @@ describe("voice in the chat window", () => {
     });
   });
 });
+
+describe("the voice pipeline toggle", () => {
+  beforeEach(() => {
+    fake.streams.length = 0;
+    fake.startError = null;
+  });
+
+  async function open() {
+    const user = userEvent.setup();
+    render(<ChatBot />);
+    await user.click(screen.getByRole("button", { name: "Ask CareBot" }));
+    return user;
+  }
+
+  test("asks for the real-time pipeline unless the patient picks the other", async () => {
+    const user = await open();
+    await user.click(screen.getByRole("button", { name: "Start voice" }));
+    expect(fake.streams.at(-1).options.pipeline).toBe("live");
+    act(() => fake.streams.at(-1).emit({ type: "ready", session_id: "s-12345678" }));
+
+    await user.click(screen.getByRole("button", { name: "Stop voice" }));
+    await user.selectOptions(screen.getByLabelText("Voice pipeline"), "cascade");
+    await user.click(screen.getByRole("button", { name: "Start voice" }));
+    expect(fake.streams.at(-1).options.pipeline).toBe("cascade");
+  });
+
+  test("cannot be changed while voice is on", async () => {
+    const user = await open();
+    expect(screen.getByLabelText("Voice pipeline")).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Start voice" }));
+
+    expect(screen.getByLabelText("Voice pipeline")).toBeDisabled();
+  });
+
+  test("shows the pipeline the server is really running, and says when it fell back", async () => {
+    const user = await open();
+    await user.click(screen.getByRole("button", { name: "Start voice" }));
+
+    act(() =>
+      fake.streams.at(-1).emit({
+        type: "ready",
+        session_id: "voice-session-9",
+        pipeline: "cascade",
+        fallback_reason: "quota",
+      }),
+    );
+
+    expect(screen.getByLabelText("Voice pipeline")).toHaveValue("cascade");
+    expect(screen.getByRole("status")).toHaveTextContent("Real-time voice is not available");
+  });
+
+  test("says so when the real-time connection is lost mid-conversation", async () => {
+    const user = await open();
+    await user.click(screen.getByRole("button", { name: "Start voice" }));
+    const stream = fake.streams.at(-1);
+    act(() => stream.emit({ type: "ready", session_id: "voice-session-9", pipeline: "live" }));
+    expect(screen.getByLabelText("Voice pipeline")).toHaveValue("live");
+
+    act(() => stream.emit({ type: "pipeline", pipeline: "cascade", reason: "dropped" }));
+
+    expect(screen.getByLabelText("Voice pipeline")).toHaveValue("cascade");
+    expect(screen.getByRole("status")).toHaveTextContent("real-time connection was lost");
+  });
+});

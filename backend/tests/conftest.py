@@ -15,6 +15,7 @@ os.environ["LLM_PROVIDER"] = "mock"
 os.environ["REDIS_URL"] = ""  # tests that want a cache build one on fakeredis
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["OLLAMA_MODEL"] = ""
+os.environ["GEMINI_LIVE_MODEL"] = ""
 os.environ["INTENT_EMBEDDING_MODEL"] = ""
 os.environ["STT_PROVIDER"] = "mock"
 os.environ["TTS_PROVIDER"] = "mock"

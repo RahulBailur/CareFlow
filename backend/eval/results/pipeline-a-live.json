@@ -1,0 +1,318 @@
+{
+  "label": "pipeline-a-live",
+  "measured_at": "2026-10-10T19:00:04+00:00",
+  "pipeline": "live",
+  "config": {
+    "whisper_model": "base",
+    "whisper_cpu_threads": 8,
+    "vad_silence_ms": 500,
+    "llm_provider": "gemini",
+    "llm_model": "gemini-3.5-flash-lite",
+    "tts_provider": "gemini",
+    "tts_chunking": "sentence"
+  },
+  "hardware": "8-thread laptop CPU; app in Docker Desktop (WSL 2) on Windows 11; home connection",
+  "summary": {
+    "ttfa_ms": {
+      "n": 19,
+      "p50": 2292.7,
+      "p95": 3293.6,
+      "min": 1483.3,
+      "max": 3293.6
+    },
+    "total_ms": {
+      "n": 19,
+      "p50": 7245.7,
+      "p95": 11936.9,
+      "min": 5308.7,
+      "max": 11936.9
+    }
+  },
+  "turns": [
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 2343.9,
+      "stages": {
+        "ttfa_ms": 2356.1,
+        "total_ms": 10303.3
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-01"
+    },
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 1946.8,
+      "stages": {
+        "ttfa_ms": 1941.9,
+        "total_ms": 5855.4
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-02"
+    },
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 1996.7,
+      "stages": {
+        "ttfa_ms": 2238.7,
+        "total_ms": 5550.4
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-03"
+    },
+    {
+      "intent": "booking",
+      "client_ttfa_ms": 2114.0,
+      "stages": {
+        "ttfa_ms": 2076.0,
+        "total_ms": 8519.5
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-04"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 2282.8,
+      "stages": {
+        "ttfa_ms": 2297.0,
+        "total_ms": 10009.0
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-05"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 2407.0,
+      "stages": {
+        "ttfa_ms": 2495.7,
+        "total_ms": 11936.9
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-06"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 3154.4,
+      "stages": {
+        "ttfa_ms": 3293.6,
+        "total_ms": 10030.6
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-07"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 2964.1,
+      "stages": {
+        "ttfa_ms": 2963.6,
+        "total_ms": 7163.3
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-08"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 2693.0,
+      "stages": {
+        "ttfa_ms": 2820.4,
+        "total_ms": 9948.2
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-09"
+    },
+    {
+      "intent": "triage",
+      "client_ttfa_ms": 2893.8,
+      "stages": {
+        "ttfa_ms": 3010.0,
+        "total_ms": 7414.8
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-10"
+    },
+    {
+      "intent": "records",
+      "client_ttfa_ms": 2340.9,
+      "stages": {
+        "ttfa_ms": 2363.3,
+        "total_ms": 7604.9
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-11"
+    },
+    {
+      "intent": "records",
+      "client_ttfa_ms": 2226.0,
+      "stages": {
+        "ttfa_ms": 2215.0,
+        "total_ms": 5650.6
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-12"
+    },
+    {
+      "intent": "records",
+      "client_ttfa_ms": 2276.1,
+      "stages": {
+        "ttfa_ms": 2292.7,
+        "total_ms": 7685.6
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-13"
+    },
+    {
+      "intent": "support",
+      "client_ttfa_ms": 2223.5,
+      "stages": {
+        "ttfa_ms": 2183.1,
+        "total_ms": 5973.2
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-14"
+    },
+    {
+      "intent": "support",
+      "client_ttfa_ms": 1802.6,
+      "stages": {
+        "ttfa_ms": 1915.0,
+        "total_ms": 5533.0
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-15"
+    },
+    {
+      "intent": "support",
+      "client_ttfa_ms": 2822.4,
+      "stages": {
+        "ttfa_ms": 2831.2,
+        "total_ms": 7245.7
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-16"
+    },
+    {
+      "intent": "support",
+      "client_ttfa_ms": 1605.7,
+      "stages": {
+        "ttfa_ms": 1599.8,
+        "total_ms": 6123.8
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-17"
+    },
+    {
+      "intent": "general",
+      "client_ttfa_ms": 1490.6,
+      "stages": {
+        "ttfa_ms": 1504.9,
+        "total_ms": 5308.7
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-18"
+    },
+    {
+      "intent": "general",
+      "client_ttfa_ms": 1512.6,
+      "stages": {
+        "ttfa_ms": 1483.3,
+        "total_ms": 6502.0
+      },
+      "routed_by": "live",
+      "used_llm": true,
+      "cache_hit": false,
+      "answered_by": "gemini-live",
+      "stt_provider": "gemini-live",
+      "tts_provider": "gemini-live",
+      "utterance": "en-19"
+    }
+  ]
+}

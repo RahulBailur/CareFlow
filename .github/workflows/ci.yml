@@ -72,3 +72,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -f backend/Dockerfile -t careflow-app .
+      # The image must also start: an import that only works with the dev dependencies
+      # passes every test and still breaks the container
+      - run: >
+          docker run --rm -e ENVIRONMENT=test -e USE_MOCK_DB=true
+          -e JWT_SECRET=ci-test-secret-that-is-at-least-32-bytes careflow-app
+          python -c "import main; print('app imports')"
