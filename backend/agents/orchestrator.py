@@ -25,6 +25,7 @@ from agents.support_agent import SUPPORT_AGENT, facts_fingerprint, topic
 from agents.triage_agent import TRIAGE_AGENT
 from memory import conversation_memory as memory
 from models.user import User
+from services.failover import collecting_llm_errors
 from services.llm import LLMProvider, LLMUnavailable, Message, get_llm
 from services.redis_client import ResponseCache, get_response_cache, reply_key
 from tools import ToolContext, track_booking
@@ -64,6 +65,8 @@ class TurnResult:
     cached: bool = False  # answered from the response cache, with no agent run
     # The tier that produced the reply: "cache", a model's name, or "rules"
     answered_by: str = "rules"
+    # LLM failures along the way, e.g. ["gemini:429"]: what made a fallback necessary
+    llm_errors: list[str] = field(default_factory=list)
 
 
 async def _cache_key(
@@ -108,6 +111,21 @@ async def _route(
 
 
 async def run_text_turn(
+    user: User,
+    text: str,
+    session_id: str,
+    llm: LLMProvider | None = None,
+    classifier: IntentClassifier | None = None,
+    progress: Progress | None = None,
+    cache: ResponseCache | None = None,
+) -> TurnResult:
+    with collecting_llm_errors() as errors:
+        result = await _run_text_turn(user, text, session_id, llm, classifier, progress, cache)
+    result.llm_errors = errors
+    return result
+
+
+async def _run_text_turn(
     user: User,
     text: str,
     session_id: str,

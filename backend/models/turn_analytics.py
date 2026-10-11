@@ -14,7 +14,7 @@ class TurnAnalytics(Document):
     nothing here can be read back as what a patient said.
     """
 
-    pipeline: str  # "cascade" | "live"
+    pipeline: str  # "text" | "cascade" | "live"
     intent: str
     language: str
     routed_by: str
@@ -22,6 +22,8 @@ class TurnAnalytics(Document):
     cache_hit: bool = False
     # The fallback tier that answered: "cache", a model's name, or "rules"
     answered_by: str = ""
+    # LLM failures during the turn, e.g. ["gemini:429", "gemini:circuit_open"]
+    llm_errors: list[str] = Field(default_factory=list)
     blocked: bool
     tools_called: list[str]
     stt_provider: str

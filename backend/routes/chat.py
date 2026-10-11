@@ -1,4 +1,6 @@
+import logging
 import secrets
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Request
@@ -7,8 +9,10 @@ from pydantic import BaseModel, Field, StringConstraints
 from agents.orchestrator import run_text_turn
 from auth_utils import CurrentUser
 from rate_limit import chat_limit, limiter
+from services.analytics import record_turn
 from services.redis_client import get_workflow_tracker
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 SessionId = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{8,64}$")]
@@ -59,7 +63,13 @@ async def booking_workflow(user: CurrentUser, session_id: SessionId) -> Workflow
 async def chat(request: Request, user: CurrentUser, body: ChatRequest) -> ChatResponse:
     """One CareBot text turn for the logged-in user."""
     session_id = body.session_id or secrets.token_urlsafe(16)
+    started = time.monotonic()
     result = await run_text_turn(user, body.message.strip() or body.message, session_id)
+    stages = {"total_ms": round((time.monotonic() - started) * 1000, 1)}
+    try:
+        await record_turn(pipeline="text", result=result, stages=stages)
+    except Exception:  # noqa: BLE001 — analytics must never cost the patient a reply
+        logger.exception("Could not record turn analytics")
     return ChatResponse(
         reply=result.reply,
         session_id=session_id,

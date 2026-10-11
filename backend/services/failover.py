@@ -9,7 +9,9 @@ middle: try each model in order, and stop asking one that keeps failing.
 
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Literal
 
 from services.llm import LLMProvider, LLMResponse, LLMUnavailable, Message, ToolSpec
@@ -17,6 +19,38 @@ from services.llm import LLMProvider, LLMResponse, LLMUnavailable, Message, Tool
 logger = logging.getLogger(__name__)
 
 BreakerState = Literal["closed", "open", "half_open"]
+
+# Every provider failure during the current turn, as "provider:kind"
+_turn_errors: ContextVar[list[str] | None] = ContextVar("llm_turn_errors", default=None)
+
+
+@contextmanager
+def collecting_llm_errors() -> Iterator[list[str]]:
+    """Collect the LLM failures of one turn, e.g. ["gemini:429"], for the analytics."""
+    errors: list[str] = []
+    token = _turn_errors.set(errors)
+    try:
+        yield errors
+    finally:
+        _turn_errors.reset(token)
+
+
+def error_kind(message: str) -> str:
+    if "429" in message:
+        return "429"
+    if "circuit open" in message:
+        return "circuit_open"
+    if "Timeout" in message or "timeout" in message:
+        return "timeout"
+    if "HTTP 5" in message:
+        return "5xx"
+    return "error"
+
+
+def _note(provider: str, kind: str) -> None:
+    errors = _turn_errors.get()
+    if errors is not None:
+        errors.append(f"{provider}:{kind}")
 
 
 class CircuitBreaker:
@@ -71,6 +105,7 @@ class FailoverLLM:
         for provider, breaker in self._tiers:
             if not breaker.allows():
                 reasons.append(f"{provider.name}: circuit open")
+                _note(provider.name, "circuit_open")
                 continue
             try:
                 response = await provider.generate(system, messages, tools)
@@ -80,6 +115,7 @@ class FailoverLLM:
                 if breaker.state == "open" and was != "open":
                     logger.warning("Circuit opened for %s: %s", provider.name, error)
                 reasons.append(f"{provider.name}: {error}")
+                _note(provider.name, error_kind(str(error)))
                 continue
             breaker.record_success()
             response.provider = provider.name

@@ -15,7 +15,6 @@ With few turns a P95 is close to the slowest turn: the turn count is printed wit
 import argparse
 import asyncio
 import json
-import math
 import platform
 import sys
 import time
@@ -28,6 +27,7 @@ import httpx
 
 from config import get_settings
 from scripts.make_eval_audio import audio_path, load_utterances, read_wav
+from services.analytics import percentile
 
 RESULTS_DIR = Path(__file__).parent / "results"
 CHUNK_MS = 100
@@ -44,15 +44,6 @@ STAGES = [
     ("ttfa_ms", "Time to first audio"),
     ("total_ms", "Whole turn"),
 ]
-
-
-def percentile(values: list[float], percent: float) -> float:
-    """Nearest-rank percentile: always one of the measured values."""
-    if not values:
-        raise ValueError("no values")
-    ordered = sorted(values)
-    rank = max(1, math.ceil(percent / 100 * len(ordered)))
-    return ordered[rank - 1]
 
 
 def summarise(turns: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
