@@ -6,9 +6,10 @@ import pytest
 from httpx import AsyncClient
 
 from agents.intent_classifier import IntentClassifier
+from config import get_settings
 from models.turn_analytics import TurnAnalytics
 from services.llm import MockLLM
-from services.tts import COOLDOWN_S, FallbackTTS, PiperTTS, Speech, TTSUnavailable
+from services.tts import COOLDOWN_S, FallbackTTS, PiperTTS, Speech, TTSUnavailable, get_tts
 from tests.helpers import make_user
 from tests.test_chat import ScriptedLLM, say, seed_hospital
 from tests.voice_helpers import UTTERANCE, FakeSTT, FakeTTS, Wire
@@ -29,6 +30,21 @@ class Voice:
     def warm_up(self) -> None:
         if self.error == "broken":
             raise RuntimeError("cannot load")
+
+
+def test_without_the_cascaded_pipeline_the_local_voice_is_never_loaded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(get_settings(), "tts_provider", "gemini")
+    monkeypatch.setattr(get_settings(), "voice_cascade_enabled", False)
+    get_tts.cache_clear()
+    try:
+        tts = get_tts()
+    finally:
+        get_tts.cache_clear()
+
+    assert isinstance(tts, FallbackTTS)
+    assert [provider.name for provider in tts._providers] == ["gemini"]
 
 
 async def test_the_first_provider_speaks_when_it_can() -> None:

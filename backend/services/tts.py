@@ -190,6 +190,10 @@ def get_tts() -> TTSProvider:
     if settings.tts_provider == "mock":
         return MockTTS()
     gemini = GeminiTTS(settings.gemini_api_key, settings.gemini_tts_model)
+    if not settings.voice_cascade_enabled:
+        # A host too small for the local models: Gemini alone, which Pipeline A only needs
+        # for the safe fallback after a blocked reply
+        return FallbackTTS([gemini])
     piper = PiperTTS(settings.piper_voice)
     order: list[TTSProvider] = (
         [piper, gemini] if settings.tts_provider == "piper" else [gemini, piper]

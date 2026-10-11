@@ -42,8 +42,10 @@ services:
         value: ""
       - key: STT_PROVIDER
         value: mock
+      # Gemini only (no local Piper voice here): speaks the safe fallback when a
+      # Pipeline A reply is blocked
       - key: TTS_PROVIDER
-        value: mock
+        value: gemini
       - key: VAD_PROVIDER
         value: energy
       - key: VOICE_CASCADE_ENABLED
