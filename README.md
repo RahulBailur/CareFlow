@@ -27,6 +27,10 @@
 
 <br/>
 
+<img src="docs/demo.gif" width="860" alt="A patient signs in, asks CareBot for the OPD timings by text, then asks about a cardiology appointment by voice and hears the answer."/>
+
+<br/>
+
 [Features](#-features) •
 [CareBot](#-carebot--the-voice-agent) •
 [Architecture](#-architecture) •
@@ -610,7 +614,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
 | ✅ | **M3 — Agents & Pipeline B** | Intent classifier, guardrails + tests, eval set, specialist agents, text chat in the app, cascaded voice pipeline with barge-in, voice in the app ✅ | `v0.3.0` |
 | ✅ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, Redis workflow tracker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
-| 🚧 | **M5 — Analytics & demo** | Analytics page ✅ · [live demo](https://careflow-uam3.onrender.com) ✅ · benchmarks write-up ✅ · "hardest problem" write-up ✅ · demo GIF ⬜ | `v0.5.0` |
+| ✅ | **M5 — Analytics & demo** | Analytics page ✅ · [live demo](https://careflow-uam3.onrender.com) ✅ · benchmarks write-up ✅ · "hardest problem" write-up ✅ · demo GIF ✅ | `v0.5.0` |
 
 <details>
 <summary><b>🔭 Out of POC scope</b></summary>
