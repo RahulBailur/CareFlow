@@ -8,7 +8,7 @@
 
 <br/>
 
-![Status](https://img.shields.io/badge/status-in%20development-orange?style=for-the-badge)
+![Status](https://img.shields.io/badge/demo-live-brightgreen?style=for-the-badge)
 ![Scope](https://img.shields.io/badge/scope-proof%20of%20concept-blue?style=for-the-badge)
 ![Cost](https://img.shields.io/badge/runs%20on-free%20tiers%20%2B%20open%20source-success?style=for-the-badge)
 
@@ -32,6 +32,7 @@
 [Architecture](#-architecture) •
 [Latency](#-latency-targets) •
 [Guardrails](#-healthcare-guardrails) •
+[Hardest problem](#-the-hardest-problem) •
 [Quick Start](#-quick-start) •
 [Roadmap](#-roadmap)
 
@@ -44,7 +45,7 @@
 > CareFlow uses synthetic data only. The Gemini free tier allows Google to use submitted content to improve its products, so no real patient data or real voice recordings belong here.
 
 > [!NOTE]
-> **Project status:** milestones **M1** and **M2** are complete: login, booking, visit history, the live queue and the doctor's queue controls, running in Docker Compose with MongoDB and Redis. Patients can chat with CareBot in the app by text, in English, Hindi or Kannada, through four specialist agents. Patients can also talk to CareBot: **Start voice** in the chat window uses the real-time Gemini Live pipeline (first audio in about 2.3 s), with the cascaded pipeline as a selectable alternative and automatic fallback. The design below is the plan from the [PRD](PRD.md); see the [Roadmap](#-roadmap) for what exists today.
+> **Project status:** all five milestones are built. Patients book appointments, follow a live queue and talk to CareBot by text or voice in English, Hindi or Kannada; doctors run their queue; admins see department load and CareBot's latency on an analytics page. It runs in Docker Compose, and a lite version is [live on Render](https://careflow-uam3.onrender.com). Measured results are under [Benchmarks](#-benchmarks), including the targets it misses; see the [Roadmap](#-roadmap) for what is left.
 
 ## 💡 The Problem
 
@@ -236,7 +237,24 @@ Pipeline A is measured end to end, since its stages happen inside one model.
 
 ### 📊 Benchmarks
 
-> 🚧 **Work in progress.** Before/after numbers for each optimisation (for example, how much answering common questions without the LLM cuts time to first audio) are added as the work is done. That before/after table is the main deliverable of the project.
+All numbers below were measured on one 8-thread laptop CPU, with the app in Docker Desktop on Windows over a home connection, using the free Gemini tier. Questions are synthesised speech. Every row links to its raw results.
+
+#### At a glance
+
+| What | Before | After |
+|---|---:|---:|
+| 🅱️ Time to first audio, P50 (19 spoken questions) | 7.94 s | **4.03 s** |
+| 🅱️ Speech to text, P50 (shorter Whisper window) | 4.12 s | **1.02 s** |
+| 🅱️ LLM stage, P50 (facts looked up before the call) | 2.12 s | **1.20 s** |
+| A repeated hospital question, by text (Redis cache) | 5.7 s | **0.03 s** |
+| 🅰️ Time to first audio, P50 / P95 (Gemini Live) | | **2.29 s / 3.29 s** |
+| Hindi word error rate (Whisper `small` for Hindi) | 104.7% | **48.8%** |
+| Intent, best guess right on unseen phrasings (embeddings added) | 35% | **85%** |
+| Load test, 50 patients at once / 10 with real Gemini | | **0 failures in both** |
+
+- **Neither voice pipeline meets its P50 target.** Pipeline A is 0.8 s over its 1.5 s target, and Pipeline B 1.5 s over its 2.5 s target.
+- **The free Gemini tier is the least predictable part.** Its latency varies by more than some optimisations save, and with 10 patients at once the rule-based fallback answered most turns. The failover chain is what kept every patient answered.
+- **Hindi by voice is the weakest result**, and Kannada is not measured. Pipeline A, where Gemini hears the speech itself, is the better path for both.
 
 #### Pipeline A against Pipeline B (measured)
 
@@ -397,6 +415,29 @@ Guardrails are enforced **in code, not only in prompts**, and each one has a tes
 | 🧪 Mock DB never used outside tests | The app refuses to start with the mock database unless running in the test environment |
 
 **Data handling:** raw audio is processed in memory and never stored. Analytics store timings and intent labels, not transcripts.
+
+---
+
+## 🧩 The hardest problem
+
+**Applying the guardrails to a model that speaks for itself.**
+
+In Pipeline B the guardrails sit in an obvious place. The LLM writes text, the server checks it, and only then is it turned into speech. Pipeline A has no such step. Gemini Live hears the patient and answers in audio directly, so the reply exists as sound before the server has any text to check. A rule such as "never name a dosage" has nothing to inspect.
+
+What the server does get is the model's own transcript of what it is saying. That transcript streams in beside the audio, but not in step with it: it can arrive a moment after the words it describes. The solution has four parts:
+
+1. **Hold every audio chunk for a moment.** The server keeps each chunk for 300 ms (`LIVE_GUARD_HOLD_MS`) before passing it on, so the transcript of those words usually arrives first.
+2. **Check the transcript as it grows.** The same filter used in Pipeline B runs over everything the model has said so far in the turn.
+3. **Cut and replace.** On a violation, the held audio is dropped and the browser is told to stop playing. The safe reply is spoken in the patient's language instead, and the turn is recorded as blocked.
+4. **Keep the tools on the server.** Bookings and record lookups run as the signed-in patient, so whatever the model says, it cannot reach another patient's data.
+
+**What it costs and what it does not cover:**
+- Every Pipeline A reply starts 300 ms later. That is included in its measured 2.29 s.
+- **The hold is a delay, not a guarantee.** If the transcript ever trails its audio by more than 300 ms, a few words could be heard before the cut. The tests prove the mechanism with a scripted Live server, where a blocked reply is never heard at all, but how far the real transcript lags has not been measured.
+- The check reads the model's transcript of its speech, not the speech itself. If the two ever differ, the check follows the transcript.
+- Reading a patient's own prescription note back to them is exempt, because medicine names belong there.
+
+Bringing Pipeline B from 7.9 s to 4 s took more hours, but each step was ordinary: measure every stage, then fix the largest. The guardrails needed a design that a speech-to-speech model does not offer, and that design trades some latency for safety on every reply.
 
 ---
 
@@ -569,7 +610,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
 | ✅ | **M3 — Agents & Pipeline B** | Intent classifier, guardrails + tests, eval set, specialist agents, text chat in the app, cascaded voice pipeline with barge-in, voice in the app ✅ | `v0.3.0` |
 | ✅ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, Redis workflow tracker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
-| 🚧 | **M5 — Analytics & demo** | Analytics page ✅ · demo deployment, benchmarks write-up, demo GIF, "hardest problem" write-up ⬜ | `v0.5.0` |
+| 🚧 | **M5 — Analytics & demo** | Analytics page ✅ · [live demo](https://careflow-uam3.onrender.com) ✅ · benchmarks write-up ✅ · "hardest problem" write-up ✅ · demo GIF ⬜ | `v0.5.0` |
 
 <details>
 <summary><b>🔭 Out of POC scope</b></summary>
