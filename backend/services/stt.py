@@ -69,64 +69,84 @@ def encode_window_seconds(utterance_seconds: float, minimum: float) -> float:
 
 
 class FasterWhisperSTT:
+    """faster-whisper on CPU, with an optional second model for Hindi and Kannada.
+
+    Measured on the eval set: `base` is fast and accurate for English but writes Hindi in
+    Urdu script, which nothing downstream can read; `small` writes Devanagari. So the main
+    model listens first, and if it hears Hindi or Kannada the multilingual model transcribes.
+    """
+
     def __init__(
-        self, model: str, compute_type: str, cpu_threads: int = 0, min_window_s: float = 8.0
+        self,
+        model: str,
+        compute_type: str,
+        cpu_threads: int = 0,
+        min_window_s: float = 8.0,
+        multilingual_model: str = "",
     ) -> None:
-        self.name = f"faster-whisper:{model}"
-        self._model_name, self._compute_type = model, compute_type
-        self._cpu_threads = cpu_threads
+        second = multilingual_model if multilingual_model and multilingual_model != model else ""
+        self.name = f"faster-whisper:{model}" + (f"+{second}" if second else "")
+        self._model_name, self._multilingual_name = model, second
+        self._compute_type, self._cpu_threads = compute_type, cpu_threads
         self._min_window_s = min_window_s  # 0 keeps the full 30 s window
         self._model: Any = None
+        self._multilingual: Any = None
+
+    def _load(self, name: str) -> Any:
+        from faster_whisper import WhisperModel
+
+        model = WhisperModel(
+            name, device="cpu", compute_type=self._compute_type, cpu_threads=self._cpu_threads
+        )
+        # One throwaway pass, so the first real utterance does not pay for a cold start
+        self._short_window(model, np.zeros(SAMPLE_RATE, dtype=np.float32), 8.0, "en")
+        return model
 
     def warm_up(self) -> None:
         if self._model is None:
-            from faster_whisper import WhisperModel
+            self._model = self._load(self._model_name)
+        if self._multilingual_name and self._multilingual is None:
+            self._multilingual = self._load(self._multilingual_name)
 
-            self._model = WhisperModel(
-                self._model_name,
-                device="cpu",
-                compute_type=self._compute_type,
-                cpu_threads=self._cpu_threads,
-            )
-            # One throwaway pass, so the first real utterance does not pay for a cold start
-            self._transcribe(np.zeros(SAMPLE_RATE, dtype=np.float32))
-
-    def _run(self, audio: Audio, language: str | None) -> tuple[str, Any]:
-        segments, info = self._model.transcribe(
+    def _run(self, model: Any, audio: Audio, language: str | None) -> tuple[str, Any]:
+        segments, info = model.transcribe(
             audio, language=language, beam_size=1, condition_on_previous_text=False
         )
         return " ".join(segment.text.strip() for segment in segments).strip(), info
 
-    def _full_window(self, audio: Audio) -> Transcript:
-        text, info = self._run(audio, None)
-        language = info.language
-        if language not in LANGUAGES:
+    def _full_window(self, model: Any, audio: Audio, language: str | None) -> Transcript:
+        text, info = self._run(model, audio, language)
+        heard = info.language
+        if heard not in LANGUAGES:
             # Heard as some other language: take the likeliest of ours and listen again
             likely = dict(info.all_language_probs or [])
-            language = max(LANGUAGES, key=lambda code: likely.get(code, 0.0))
-            text, _ = self._run(audio, language)
-        return Transcript(text, language)
+            heard = max(LANGUAGES, key=lambda code: likely.get(code, 0.0))
+            text, _ = self._run(model, audio, heard)
+        return Transcript(text, heard)
 
-    def _short_window(self, audio: Audio, window_s: float) -> Transcript:
+    def _short_window(
+        self, model: Any, audio: Audio, window_s: float, language: str | None
+    ) -> Transcript:
         """One encoder pass over `window_s` seconds, then a greedy decode."""
         import ctranslate2
 
-        model, tokens = self._model.model, self._model.hf_tokenizer
+        whisper, tokens = model.model, model.hf_tokenizer
         frames = int(window_s * FEATURE_FRAMES_PER_SECOND)
-        features = self._model.feature_extractor(audio)[:, :frames]
+        features = model.feature_extractor(audio)[:, :frames]
         if features.shape[1] < frames:
             features = np.pad(features, ((0, 0), (0, frames - features.shape[1])))
         batch = np.ascontiguousarray(features[None].astype(np.float32))
-        encoded = model.encode(ctranslate2.StorageView.from_array(batch))
+        encoded = whisper.encode(ctranslate2.StorageView.from_array(batch))
 
-        # The likeliest of our own languages, whatever else Whisper thinks it heard
-        likely = dict(model.detect_language(encoded)[0])
-        language = max(LANGUAGES, key=lambda code: likely.get(f"<|{code}|>", 0.0))
+        if language is None:
+            # The likeliest of our own languages, whatever else Whisper thinks it heard
+            likely = dict(whisper.detect_language(encoded)[0])
+            language = max(LANGUAGES, key=lambda code: likely.get(f"<|{code}|>", 0.0))
         prompt = [
             tokens.token_to_id(token)
             for token in (START, f"<|{language}|>", "<|transcribe|>", NO_TIMESTAMPS)
         ]
-        result = model.generate(
+        result = whisper.generate(
             encoded,
             [prompt],
             beam_size=1,
@@ -142,12 +162,19 @@ class FasterWhisperSTT:
         text = tokens.decode([token for token in result.sequences_ids[0] if token < end])
         return Transcript(text.strip(), language)
 
-    def _transcribe(self, audio: Audio) -> Transcript:
-        self.warm_up()
+    def _with(self, model: Any, audio: Audio, language: str | None) -> Transcript:
         window_s = encode_window_seconds(len(audio) / SAMPLE_RATE, self._min_window_s)
         if self._min_window_s <= 0 or window_s >= WHISPER_WINDOW_S:
-            return self._full_window(audio)
-        return self._short_window(audio, window_s)
+            return self._full_window(model, audio, language)
+        return self._short_window(model, audio, window_s, language)
+
+    def _transcribe(self, audio: Audio) -> Transcript:
+        self.warm_up()
+        first = self._with(self._model, audio, None)
+        if first.language == "en" or self._multilingual is None:
+            return first
+        # Hindi or Kannada: the language is known now, so the second model only transcribes
+        return self._with(self._multilingual, audio, first.language)
 
     async def transcribe(self, audio: Audio) -> Transcript:
         try:
@@ -165,5 +192,6 @@ def get_stt() -> STTProvider:
             settings.whisper_compute_type,
             settings.whisper_cpu_threads,
             settings.whisper_min_window_s,
+            settings.whisper_multilingual_model,
         )
     return MockSTT()
