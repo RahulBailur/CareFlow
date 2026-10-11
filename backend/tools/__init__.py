@@ -15,6 +15,7 @@ from agents.intent_classifier import Language
 from models.user import Role, User
 from services.appointments import BookingError
 from services.llm import ToolSpec
+from services.redis_client import get_workflow_tracker
 
 ToolResult = dict[str, Any]
 Handler = Callable[["ToolContext", dict[str, Any]], Awaitable[ToolResult]]
@@ -67,12 +68,38 @@ def schema(
 async def run_tool(tool: Tool, context: ToolContext, args: dict[str, Any]) -> ToolResult:
     """Run a tool. Refusals and bad arguments come back as data for the model to explain."""
     try:
-        return await tool.handler(context, args)
+        result = await tool.handler(context, args)
     except ValidationError as error:
         problems = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in error.errors())
-        return {"error": f"Invalid arguments: {problems}"}
+        result = {"error": f"Invalid arguments: {problems}"}
     except BookingError as error:
-        return {"error": error.detail}
+        result = {"error": error.detail}
+    if stage := workflow_stage(tool.name, result):
+        await track_booking(context, stage, tool.name)
+    return result
+
+
+# Booking tools move a booking request along; the others do not touch it
+_SLOT_TOOLS = frozenset({"find_slots"})
+_CHANGE_TOOLS = frozenset({"book_slot", "cancel_appointment", "reschedule_appointment"})
+
+
+def workflow_stage(tool_name: str, result: ToolResult) -> str | None:
+    if tool_name not in _SLOT_TOOLS | _CHANGE_TOOLS:
+        return None
+    if "error" in result:
+        return "failed"
+    if tool_name in _SLOT_TOOLS:
+        return "slot_checked"
+    if result.get("needs_confirmation"):
+        return "awaiting_confirmation"
+    return "confirmed"
+
+
+async def track_booking(context: ToolContext, stage: str, tool: str = "") -> None:
+    await get_workflow_tracker().advance(
+        context.user.id, context.session_id, context.turn_id, stage, tool
+    )
 
 
 OUTCOME_KEYS = ("booked", "cancelled", "rescheduled")

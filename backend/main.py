@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -22,6 +23,7 @@ from services.tts import get_tts
 from sockets import sio
 
 logger = logging.getLogger(__name__)
+WARMED_UP = threading.Event()
 
 
 def _warm_up() -> None:
@@ -33,6 +35,8 @@ def _warm_up() -> None:
         logger.exception("Model warm-up failed; models will load on first use")
     else:
         logger.info("Models ready")
+    finally:
+        WARMED_UP.set()  # loaded, or given up on: either way, nothing is still loading
 
 
 @asynccontextmanager
@@ -70,7 +74,9 @@ api.include_router(voice_ws.router)
 
 @api.get("/api/health", tags=["health"])
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    # "loading" while the start-up warm-up runs: worth waiting for before measuring anything
+    ready = WARMED_UP.is_set() or get_settings().environment == "test"
+    return {"status": "ok", "models": "ready" if ready else "loading"}
 
 
 # Last, so its catch-all route never shadows an API route
