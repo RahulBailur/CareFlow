@@ -35,9 +35,10 @@ RUN useradd --system --no-create-home careflow \
     && mkdir -p /models && chown careflow /models
 USER careflow
 
+# Hosts such as Render say which port to listen on in $PORT; 8000 otherwise
 EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=5 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"
+    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"8000\")}/api/health', timeout=2)"
 
 # One worker on purpose: Socket.IO rooms live in this process (see Future Work in the PRD)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

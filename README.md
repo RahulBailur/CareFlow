@@ -455,6 +455,26 @@ Then open **http://localhost:8000** and log in with a seeded account (for exampl
 
 `docker compose down` stops everything; add `-v` to also delete the data.
 
+### Public demo (Render, free)
+
+The repository includes a Render Blueprint ([`render.yaml`](render.yaml)) that deploys the app with MongoDB Atlas and Upstash Redis, all on free tiers.
+
+Render's free instance has 512 MB of memory and a tenth of a CPU, too little for the local speech and embedding models, so the demo runs **lite**:
+
+| | Demo on Render | Full app (Docker Compose) |
+|---|---|---|
+| Text chat | Gemini, with cache and rule-based fallbacks | Same, plus the embedding classifier |
+| Voice A (Gemini Live) | ✅ | ✅ |
+| Voice B (cascaded, local Whisper + Piper) | Switched off | ✅ |
+| Memory used | about 110 MB | about 1.3 GB |
+
+Checked before deploying, with the same image held to 512 MB and a tenth of a CPU against the real Atlas and Upstash databases:
+- **A cold start's first login took 2.1 s** (19 s before the database connection moved to start-up).
+- **Chat took 1–3 s,** and a repeated hospital question 1.1 s from the cache.
+- **Voice A's first audio arrived 2.8 s after speaking.**
+- The very first voice session after a start is much slower.
+- The free instance also sleeps after 15 minutes without visitors and takes about a minute to wake: **open the demo a minute before showing it.**
+
 <details>
 <summary><b>Optional — fully offline LLM fallback</b></summary>
 

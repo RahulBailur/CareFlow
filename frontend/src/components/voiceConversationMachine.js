@@ -34,6 +34,8 @@ const STATUS = {
 const CLOSE_REASONS = {
   4401: "Your session has expired. Please log in again.",
   4429: "Too many voice sessions. Please wait a minute and try again.",
+  4400: "That voice pipeline is not available here. Try the other one.",
+  4503: "Voice is not available right now. You can still type your question.",
 };
 
 export function microphoneError(error) {

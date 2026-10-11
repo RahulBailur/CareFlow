@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     vad_silence_ms: int = 500
     tts_chunking: Literal["sentence", "reply"] = "sentence"
     rate_limit_voice_sessions: str = "5/minute"
+    # False on a host too small for the local speech models: voice is then Pipeline A only,
+    # and if Gemini Live is unavailable the patient is told to type instead
+    voice_cascade_enabled: bool = True
     seed_default_password: str = ""
     frontend_build_dir: str = "../frontend/build"
     # Empty switches the embedding stage of the intent classifier off

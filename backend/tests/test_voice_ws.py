@@ -313,3 +313,60 @@ async def test_a_malformed_session_id_is_replaced_not_trusted(ws_url: str, sessi
 
     assert (await caller.until("ready"))["session_id"] != session_id
     await caller.hang_up()
+
+
+async def test_with_the_cascade_switched_off_asking_for_it_is_refused(
+    ws_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from config import get_settings
+
+    monkeypatch.setattr(get_settings(), "voice_cascade_enabled", False)
+    caller = await Caller.connect(f"{ws_url}?pipeline=cascade", await make_user())
+
+    assert "not available here" in (await caller.until("error"))["message"]
+    assert await caller.closed_with() == voice_ws.UNSUPPORTED
+    await caller.hang_up()
+
+
+async def test_with_the_cascade_switched_off_no_live_session_means_no_voice(
+    ws_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The lite demo: Gemini Live unavailable, and no local models to fall back on."""
+    from config import get_settings
+
+    monkeypatch.setattr(get_settings(), "voice_cascade_enabled", False)
+    caller = await Caller.connect(f"{ws_url}?pipeline=live", await make_user())
+
+    assert (await caller.until("error"))["message"] == voice_ws.NO_VOICE
+    assert await caller.closed_with() == voice_ws.VOICE_UNAVAILABLE
+    await caller.hang_up()
+
+
+async def test_with_the_cascade_switched_off_a_lost_live_session_ends_voice(
+    ws_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from config import get_settings
+    from tests.test_live_pipeline import FakeLive
+    from voice.live_pipeline import LiveUnavailable
+
+    monkeypatch.setattr(get_settings(), "voice_cascade_enabled", False)
+    live = FakeLive()
+    opened: list[dict[str, Any]] = []
+
+    async def connect(setup: dict[str, Any]) -> FakeLive:
+        if opened:
+            raise LiveUnavailable("quota exhausted")
+        opened.append(setup)
+        return live
+
+    monkeypatch.setattr(voice_ws, "connect_gemini_live", connect)
+    caller = await Caller.connect(f"{ws_url}?pipeline=live", await make_user())
+    assert (await caller.until("ready"))["pipeline"] == "live"
+
+    live.push(None)
+    await asyncio.sleep(0.2)
+    await caller.ws.send_bytes(UTTERANCE)
+
+    assert (await caller.until("error"))["message"] == voice_ws.NO_VOICE
+    await caller.until("state", state="END")
+    await caller.hang_up()

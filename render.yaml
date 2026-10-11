@@ -1,0 +1,57 @@
+# Render Blueprint for the public demo: New -> Blueprint -> pick this repository.
+# Render asks for the values marked `sync: false`; everything else is set here.
+#
+# Render's free instance has 512 MB of memory and a tenth of a CPU, too little for the local
+# speech and embedding models, so this demo runs "lite": text chat on Gemini with rule-based
+# fallbacks, and voice through Pipeline A (Gemini Live) only. The full app runs with Docker
+# Compose (see the README).
+
+services:
+  - type: web
+    name: careflow
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass  # deploy main only once CI has passed
+    envVars:
+      - key: ENVIRONMENT
+        value: demo
+      - key: JWT_SECRET
+        generateValue: true
+      # Secrets, entered in Render's dashboard and never committed
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # Models (check Google AI Studio for the current free IDs)
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_TEXT_MODEL
+        value: gemini-3.5-flash-lite
+      - key: GEMINI_LIVE_MODEL
+        value: gemini-3.8-live
+      - key: GEMINI_TTS_MODEL
+        value: gemini-3.8-flash-lite-tts
+      # Lite: nothing that needs the local models
+      - key: INTENT_EMBEDDING_MODEL
+        value: ""
+      - key: STT_PROVIDER
+        value: mock
+      - key: TTS_PROVIDER
+        value: mock
+      - key: VAD_PROVIDER
+        value: energy
+      - key: VOICE_CASCADE_ENABLED
+        value: "false"
+      # A tenth of a CPU: cheaper password hashing keeps logins near a second
+      - key: BCRYPT_ROUNDS
+        value: "10"
+      # Render's proxy is the only way in, so trust the client address it forwards;
+      # otherwise every visitor would share one rate limit
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
