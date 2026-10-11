@@ -23,6 +23,10 @@
 
 <br/>
 
+**[▶ Try the live demo](https://careflow-uam3.onrender.com)** · sign in as `ananya@careflow.example` / `careflow-demo-1` · may take a minute to wake
+
+<br/>
+
 [Features](#-features) •
 [CareBot](#-carebot--the-voice-agent) •
 [Architecture](#-architecture) •
@@ -457,6 +461,14 @@ Then open **http://localhost:8000** and log in with a seeded account (for exampl
 
 ### Public demo (Render, free)
 
+**Live at https://careflow-uam3.onrender.com**. Every demo account's password is `careflow-demo-1`:
+
+| Role | Email |
+|---|---|
+| Patient | `ananya@careflow.example` |
+| Doctor | `asha.rao@careflow.example` |
+| Admin (analytics page) | `admin@careflow.example` |
+
 The repository includes a Render Blueprint ([`render.yaml`](render.yaml)) that deploys the app with MongoDB Atlas and Upstash Redis, all on free tiers.
 
 Render's free instance has 512 MB of memory and a tenth of a CPU, too little for the local speech and embedding models, so the demo runs **lite**:
@@ -473,6 +485,7 @@ Checked before deploying, with the same image held to 512 MB and a tenth of a CP
 - **Chat took 1–3 s,** and a repeated hospital question 1.1 s from the cache.
 - **Voice A's first audio arrived 2.8 s after speaking.**
 - The very first voice session after a start is much slower.
+- Render's free plan has no fixed IP address, so the Atlas IP access list allows `0.0.0.0/0`; the database user's password is what protects it.
 - The free instance also sleeps after 15 minutes without visitors and takes about a minute to wake: **open the demo a minute before showing it.**
 
 <details>
