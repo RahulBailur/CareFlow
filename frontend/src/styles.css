@@ -15,6 +15,9 @@
   --success: #1b6e3c;
   --success-soft: #e4f4ea;
   --radius: 10px;
+  /* chart series: categorical slots 1-2, validated light and dark */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
   color-scheme: light;
 }
 
@@ -35,6 +38,8 @@
     --warning-text: #ffe29a;
     --success: #7fd6a0;
     --success-soft: #173324;
+    --series-1: #3987e5;
+    --series-2: #d95926;
     color-scheme: dark;
   }
 }
@@ -601,4 +606,86 @@ td:first-child {
   margin: 0;
   min-height: 1.35em;
   padding: 0 0.75rem 0.5rem;
+}
+
+/* --- admin analytics ------------------------------------------------------------------ */
+
+h3 {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.4rem;
+}
+
+.section-header {
+  margin-top: 1.75rem;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.inline-label {
+  margin: 0;
+}
+
+.inline-label select {
+  width: auto;
+}
+
+.stats {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  margin: 0.15rem 0 0;
+}
+
+.stat-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.chart {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 0.5rem 0.25rem;
+}
+
+.chart-grid {
+  display: grid;
+  gap: 0 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* "0.55 s" is one value: never split it over two lines */
+.table-wrap td:not(:first-child) {
+  white-space: nowrap;
+}
+
+.error-list li {
+  padding: 0.2rem 0;
 }

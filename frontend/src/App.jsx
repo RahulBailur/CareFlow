@@ -5,7 +5,7 @@ import DemoBanner from "./components/DemoBanner";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./context/AuthContext";
-import AdminHome from "./pages/AdminHome";
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import BookAppointment from "./pages/BookAppointment";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import Login from "./pages/Login";
@@ -13,7 +13,7 @@ import PatientDashboard from "./pages/PatientDashboard";
 import Register from "./pages/Register";
 import VisitHistory from "./pages/VisitHistory";
 
-const HOME = { patient: PatientDashboard, doctor: DoctorDashboard, admin: AdminHome };
+const HOME = { patient: PatientDashboard, doctor: DoctorDashboard, admin: AnalyticsDashboard };
 
 function Home() {
   const { user } = useAuth();

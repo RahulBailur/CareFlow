@@ -16,7 +16,7 @@ from config import get_settings
 from database import close_db, init_db
 from frontend_app import mount_frontend
 from rate_limit import limiter
-from routes import appointments, auth, chat, doctors, hospital, voice_ws
+from routes import admin, appointments, auth, chat, doctors, hospital, voice_ws
 from services.appointments import BookingError
 from services.stt import get_stt
 from services.tts import get_tts
@@ -69,6 +69,7 @@ api.include_router(appointments.router)
 api.include_router(doctors.router)
 api.include_router(hospital.router)
 api.include_router(chat.router)
+api.include_router(admin.router)
 api.include_router(voice_ws.router)
 
 

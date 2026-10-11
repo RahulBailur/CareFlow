@@ -15,8 +15,8 @@ from typing import Any
 
 from agents.intent_classifier import IntentClassifier
 from agents.orchestrator import TurnResult, run_text_turn
-from models.turn_analytics import TurnAnalytics
 from models.user import User
+from services.analytics import record_turn
 from services.llm import LLMProvider
 from services.stt import STTProvider, STTUnavailable
 from services.tts import TTSProvider, TTSUnavailable
@@ -280,22 +280,15 @@ class VoiceSession:
     ) -> None:
         stages = timer.stages()
         try:
-            await TurnAnalytics(
+            await record_turn(
                 pipeline=PIPELINE,
-                intent=result.intent.value,
-                language=result.language,
-                routed_by=result.routed_by,
-                used_llm=result.used_llm,
-                cache_hit=result.cached,
-                answered_by=result.answered_by,
-                blocked=result.blocked,
-                tools_called=result.tools_called,
+                result=result,
+                stages=stages,
                 stt_provider=self._stt.name,
                 tts_provider=voice,
                 spoken=bool(voice),
                 barged_in=barged_in,
-                stages=stages,
-            ).insert()
+            )
             await self._send_json(
                 {
                     "type": "timing",
