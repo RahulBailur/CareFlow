@@ -315,6 +315,23 @@ The Triage, Records and Support agents made two LLM calls per turn: one in which
 - The 5 booking turns still make two or more calls (2.1 s at P50).
 - The guardrails are unchanged: identity still comes from the session, the model is simply never offered a records tool to aim at anyone, and the triage filter still checks every reply.
 
+#### Phone-quality audio and Hindi (measured)
+
+Phone calls carry 8 kHz audio limited to about 300–3400 Hz, usually through a G.711 codec. `eval/stt_wer.py` transcribes each labelled utterance three ways, as the browser sends it, as an 8 kHz phone line, and as a phone line with the G.711 codec, and scores each against its text. Raw transcripts and scores: [`stt-wer-dev.json`](backend/eval/results/stt-wer-dev.json).
+
+| Language (utterances) | Word error rate, 16 kHz | 8 kHz | 8 kHz + G.711 |
+|---|---:|---:|---:|
+| English (19) | 2.8% | 4.9% | 4.9% |
+| Hindi (11), Whisper `base` only | 104.7% | 104.7% | 102.3% |
+| Hindi (11), Whisper `small` for Hindi | 48.8% | 48.8% | 48.8% |
+
+- **Phone audio costs English about two points of word error rate, and they land on the words triage needs:** "I have had **chest** pain" became "I have had **just** pain", and "**ear** pain" became "**your** pain". Over a phone line, a caller with chest pain would lose the emergency advice and the Cardiology suggestion.
+- **Whisper `base` cannot do Hindi here.** It wrote 9 of 11 Hindi questions in Urdu script, which no Hindi keyword can match, and dropped 3 as too uncertain. Whisper `small` writes Devanagari, and with the short encoder window it takes about 2.2 s. The cascaded pipeline now listens with `base` and hands Hindi and Kannada to `small` (`WHISPER_MULTILINGUAL_MODEL`).
+- **Even then, Hindi is weak:** about half the words are wrong, and only 6 of the 11 Hindi transcripts were routed to the right agent by the keyword rules alone. Pipeline A, where Gemini Live hears the speech itself, is the better path for Hindi.
+- **By voice in the container, Hindi on Pipeline B is slow and silent:** over the 11 Hindi questions, speech to text took 6.7 s at P50 (Whisper `small` inside Docker), every question was answered by Gemini, and none of the answers could be spoken, because Gemini TTS was out of quota and the Piper fallback voice is English only. Raw numbers: [`stt-hindi-small.json`](backend/eval/results/stt-hindi-small.json).
+- **Kannada and code-mixed speech are not measured yet.** Their audio could not be synthesised: the free Gemini TTS quota ran out after 11 Hindi clips.
+- All questions are synthesised speech, and the Hindi references were written by the project author.
+
 #### Intent classifier (measured)
 
 How often the local classifier picks the right agent, and how often it is sure enough to skip the LLM. Run with `python eval/run_eval.py --classifier --set all`.
@@ -336,7 +353,7 @@ How often the local classifier picks the right agent, and how often it is sure e
 |---|---|
 | `eval/run_eval.py --classifier` | Intent accuracy of the local classifier on labelled utterances (EN / HI / KN / code-mixed) — results above |
 | `eval/run_eval.py --live` | End-to-end tool-call correctness with the real LLM |
-| `eval/stt_wer.py` | faster-whisper word error rate at 16 kHz vs 8 kHz phone-grade audio, per language |
+| `eval/stt_wer.py` | faster-whisper word error rate at 16 kHz vs 8 kHz phone audio, with and without the G.711 codec, per language — results above |
 | `eval/latency_bench.py` | P50 / P95 per stage for the voice pipeline — baseline above |
 | `loadtest/locustfile.py` | P95 response time for 20–50 concurrent text sessions |
 
@@ -502,7 +519,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 | ✅ | **M1 — Foundation** | Repo, Docker Compose, CI, pre-commit, models, auth, seed data, demo banner | `v0.1.0` |
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
 | ✅ | **M3 — Agents & Pipeline B** | Intent classifier, guardrails + tests, eval set, specialist agents, text chat in the app, cascaded voice pipeline with barge-in, voice in the app ✅ | `v0.3.0` |
-| 🚧 | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench ✅ · 8 kHz WER test, load test ⬜ | `v0.4.0` |
+| 🚧 | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test ✅ · load test ⬜ | `v0.4.0` |
 | ⬜ | **M5 — Analytics & demo** | Analytics page, demo deployment, benchmarks, demo GIF, "hardest problem" write-up | `v0.5.0` |
 
 <details>

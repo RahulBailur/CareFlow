@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     whisper_cpu_threads: int = 0  # 0 lets CTranslate2 choose (4 at most)
     # Seconds of audio the encoder gets for a short utterance; 0 = the full 30 s
     whisper_min_window_s: float = 8.0
+    # Transcribes Hindi and Kannada when set; empty uses WHISPER_MODEL for every language
+    whisper_multilingual_model: str = ""
     vad_silence_ms: int = 500
     tts_chunking: Literal["sentence", "reply"] = "sentence"
     rate_limit_voice_sessions: str = "5/minute"
