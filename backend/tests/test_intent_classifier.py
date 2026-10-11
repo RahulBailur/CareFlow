@@ -214,3 +214,27 @@ def test_a_confident_local_answer_is_never_wrong_on_the_heldout_set() -> None:
 
 def test_the_embedder_is_off_when_no_model_is_configured() -> None:
     assert load_embedder("") is None
+
+
+def test_requests_never_wait_for_the_embedding_model_to_load(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import agents.intent_classifier as module
+
+    loads: list[str] = []
+
+    def slow_loader(model_name: str) -> None:
+        loads.append(model_name)
+
+    monkeypatch.setattr(module, "load_embedder", slow_loader)
+    monkeypatch.setattr(module.get_settings(), "intent_embedding_model", "some-model")
+    module.get_classifier.cache_clear()
+    monkeypatch.setattr(module, "_ready", module.threading.Event())
+
+    before = module.classifier_for_requests()
+    assert before is module._KEYWORDS_ONLY and loads == [] and not module.models_ready()
+
+    module.get_classifier()  # what the start-up warm-up does
+    after = module.classifier_for_requests()
+    assert after is module.get_classifier() and module.models_ready() and loads == ["some-model"]
+    module.get_classifier.cache_clear()

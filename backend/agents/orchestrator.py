@@ -15,7 +15,7 @@ from agents.intent_classifier import (
     IntentClassifier,
     IntentResult,
     Language,
-    get_classifier,
+    classifier_for_requests,
     keyword_scores,
     normalise,
 )
@@ -27,7 +27,7 @@ from memory import conversation_memory as memory
 from models.user import User
 from services.llm import LLMProvider, LLMUnavailable, Message, get_llm
 from services.redis_client import ResponseCache, get_response_cache, reply_key
-from tools import ToolContext
+from tools import ToolContext, track_booking
 from tools.confirmation import expire_older_proposals
 from tools.support_tools import get_hospital_info
 
@@ -118,7 +118,7 @@ async def run_text_turn(
 ) -> TurnResult:
     assert user.id is not None  # noqa: S101 — loaded from the database
     llm = llm or get_llm()
-    local = (classifier or get_classifier()).classify(text)
+    local = (classifier or classifier_for_requests()).classify(text)
     history = await memory.recent_messages(user.id, session_id)
     previous = await memory.last_intent(user.id, session_id)
 
@@ -131,6 +131,9 @@ async def run_text_turn(
         session_id=session_id,
         turn_id=secrets.token_hex(8),
     )
+    if intent == Intent.BOOKING:
+        await track_booking(context, "received")
+        await track_booking(context, "intent_classified")
     cache = cache or get_response_cache()
     key = await _cache_key(intent, routed_by, text, context) if cache.enabled else None
     if key and (hit := await cache.get(key)):

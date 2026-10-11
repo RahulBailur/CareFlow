@@ -127,7 +127,7 @@ Each agent is bound to a narrow tool set, so it can only do its own job.
 - 🧠 **Conversation memory** — follow-ups like *"what time was that again?"* resolve
 - 🔄 **Server-driven state machine** — `LISTENING → TRANSCRIBING → THINKING → TOOL_EXECUTION → SPEAKING`, streamed over Socket.IO so the UI never guesses timing
 - ✋ **Barge-in** — speaking during playback stops the bot and starts a new turn
-- 🧾 **Workflow tracker** — each booking moves through `received → intent_classified → slot_checked → confirmed / failed` in Redis
+- 🧾 **Workflow tracker** — each booking moves through `received → intent_classified → slot_checked → awaiting_confirmation → confirmed / failed` in Redis, readable while it runs at `GET /api/chat/{session_id}/workflow`
 - ⚡ **Response cache** — frequent questions (*"OPD timings"*) are answered from Redis with no LLM call
 - 📈 **Per-turn analytics** — pipeline, intent, stage timings and fallback tier
 
@@ -332,6 +332,21 @@ Phone calls carry 8 kHz audio limited to about 300–3400 Hz, usually through a 
 - **Kannada and code-mixed speech are not measured yet.** Their audio could not be synthesised: the free Gemini TTS quota ran out after 11 Hindi clips.
 - All questions are synthesised speech, and the Hindi references were written by the project author.
 
+#### Load test — many patients at once (measured)
+
+`backend/loadtest/locustfile.py` registers simulated patients, each of whom chats with CareBot and checks availability and their appointments, with 1–3 s between actions. All requests come from one laptop, so the app runs with its per-IP rate limits raised (`backend/loadtest/docker-compose.loadtest.yml`). Raw numbers: [`backend/loadtest/results/`](backend/loadtest/results/).
+
+| Run | Requests | Failures | Chat P50 | Chat P95 | Chat P99 |
+|---|---:|---:|---:|---:|---:|
+| 50 patients, no LLM, 2 min | 2,574 | 0 | 0.09 s | 1.1 s | 4.6 s |
+| 10 patients, real Gemini, 1 min | 232 | 0 | 0.03 s | 4.2 s | 12 s |
+
+- **Nothing failed in either run.**
+- **With the real model, the free tier could not keep up.** Of 147 chat turns, Gemini answered 9%, the Redis cache 31% and the rule-based replies 61%: the circuit breaker opened and every patient still got an answer. The P95 and P99 are the turns that waited on Gemini before it gave up.
+- **The load test found two ways one request could stall everyone else's.** Password hashing (bcrypt, about 0.26 s per hash) ran on the server's single event loop, so 50 sign-ups at once held every request; it now runs in a worker thread, and a test fails if it moves back. And a chat request arriving before start-up had loaded the embedding model would load it itself on the event loop, which froze the server for 2.7 s once; until the models are ready, requests now classify with keywords alone.
+- **Measure only once the models have loaded.** Straight after a cold start, while the speech models are still loading, the same 50-patient test gave a chat P95 of 7.6 s. `/api/health` now reports `"models": "loading"` until they are ready.
+- Two warm runs of the 50-patient test gave a chat P95 of 0.52 s and 1.1 s: the laptop also runs Locust itself, so treat these as approximate.
+
 #### Intent classifier (measured)
 
 How often the local classifier picks the right agent, and how often it is sure enough to skip the LLM. Run with `python eval/run_eval.py --classifier --set all`.
@@ -355,7 +370,7 @@ How often the local classifier picks the right agent, and how often it is sure e
 | `eval/run_eval.py --live` | End-to-end tool-call correctness with the real LLM |
 | `eval/stt_wer.py` | faster-whisper word error rate at 16 kHz vs 8 kHz phone audio, with and without the G.711 codec, per language — results above |
 | `eval/latency_bench.py` | P50 / P95 per stage for the voice pipeline — baseline above |
-| `loadtest/locustfile.py` | P95 response time for 20–50 concurrent text sessions |
+| `loadtest/locustfile.py` | P95 response time for 20–50 concurrent text sessions — results above |
 
 ---
 
@@ -506,6 +521,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 | `GET` | `/api/admin/analytics` | Admin | Latency, intent mix, fallback rate |
 | `GET` | `/api/hospital/config` | — | Public hospital info |
 | `POST` | `/api/chat` | JWT | CareBot text turn (rate-limited) |
+| `GET` | `/api/chat/{session_id}/workflow` | JWT | Where the caller's booking requests in that conversation have got to |
 | `WS` | `/ws/voice?pipeline=live\|cascade` | JWT | CareBot voice stream |
 
 </details>
@@ -519,7 +535,7 @@ Model IDs live only in `.env`, never in code — free-tier model names change.
 | ✅ | **M1 — Foundation** | Repo, Docker Compose, CI, pre-commit, models, auth, seed data, demo banner | `v0.1.0` |
 | ✅ | **M2 — Appointments & real-time** | Availability, unique-slot booking, history, authenticated Socket.IO queue, delay broadcast, patient and doctor screens | `v0.2.0` |
 | ✅ | **M3 — Agents & Pipeline B** | Intent classifier, guardrails + tests, eval set, specialist agents, text chat in the app, cascaded voice pipeline with barge-in, voice in the app ✅ | `v0.3.0` |
-| 🚧 | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, latency bench, 8 kHz WER test ✅ · load test ⬜ | `v0.4.0` |
+| ✅ | **M4 — Pipeline A & reliability** | Gemini Live pipeline, failover chain + circuit breaker, Redis workflow tracker, latency bench, 8 kHz WER test, load test | `v0.4.0` |
 | ⬜ | **M5 — Analytics & demo** | Analytics page, demo deployment, benchmarks, demo GIF, "hardest problem" write-up | `v0.5.0` |
 
 <details>

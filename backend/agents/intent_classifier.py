@@ -6,6 +6,7 @@ about comes back with `needs_llm=True` and a best guess, and the orchestrator as
 
 import math
 import re
+import threading
 import unicodedata
 from dataclasses import dataclass
 from functools import lru_cache
@@ -146,4 +147,27 @@ class IntentClassifier:
 
 @lru_cache
 def get_classifier() -> IntentClassifier:
-    return IntentClassifier(load_embedder(get_settings().intent_embedding_model))
+    """The full classifier. Loading its embedding model takes seconds: call it at start-up."""
+    classifier = IntentClassifier(load_embedder(get_settings().intent_embedding_model))
+    _ready.set()
+    return classifier
+
+
+_ready = threading.Event()
+_KEYWORDS_ONLY = IntentClassifier()
+
+
+def classifier_for_requests() -> IntentClassifier:
+    """What a request should classify with: never something that is still loading.
+
+    Until the start-up warm-up has loaded the embedding model, requests use the keyword
+    rules alone. Loading it inside a request would hold every other patient's request
+    for seconds (the load test caught this).
+    """
+    if _ready.is_set() or not get_settings().intent_embedding_model:
+        return get_classifier()
+    return _KEYWORDS_ONLY
+
+
+def models_ready() -> bool:
+    return _ready.is_set() or not get_settings().intent_embedding_model

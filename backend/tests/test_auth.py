@@ -179,3 +179,27 @@ async def test_auth_endpoints_are_rate_limited(client: AsyncClient) -> None:
 def test_mock_db_is_refused_outside_tests(environment: str) -> None:
     with pytest.raises(ValidationError, match="USE_MOCK_DB"):
         Settings(environment=environment, use_mock_db=True, jwt_secret="x" * 40)
+
+
+async def test_password_hashing_does_not_block_other_requests(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Found by the load test: 50 sign-ups at once held every patient's requests for seconds."""
+    import asyncio
+    import time
+
+    import routes.auth
+
+    def slow_hash(password: str) -> str:
+        time.sleep(0.5)  # bcrypt's deliberate cost, exaggerated
+        return "hashed"
+
+    monkeypatch.setattr(routes.auth, "hash_password", slow_hash)
+    started = time.monotonic()
+    register = asyncio.create_task(client.post("/api/auth/register", json=PATIENT))
+    health = asyncio.create_task(client.get("/api/health"))
+
+    assert (await health).status_code == 200
+    # Answered while the sign-up was still hashing, not after it
+    assert time.monotonic() - started < 0.3
+    assert (await register).status_code == 201

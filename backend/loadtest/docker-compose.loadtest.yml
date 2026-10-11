@@ -1,0 +1,13 @@
+# Overrides for the load test only. Never for a demo or anything public.
+#
+#   docker compose -f docker-compose.yml -f backend/loadtest/docker-compose.loadtest.yml up -d
+#   LOADTEST_LLM_PROVIDER=gemini docker compose -f ... up -d    # the run with the real LLM
+#
+# The rate limits are per IP, and the load test sends everything from one machine.
+
+services:
+  app:
+    environment:
+      RATE_LIMIT_AUTH: "100000/minute"
+      RATE_LIMIT_CHAT: "100000/minute"
+      LLM_PROVIDER: ${LOADTEST_LLM_PROVIDER:-mock}

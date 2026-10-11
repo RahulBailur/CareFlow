@@ -27,7 +27,11 @@ from typing import Any, Protocol
 import aiohttp
 
 from agents.guardrails import DISCLAIMERS, SAFE_FALLBACKS, find_violations
-from agents.intent_classifier import IntentClassifier, detect_language, get_classifier
+from agents.intent_classifier import (
+    IntentClassifier,
+    classifier_for_requests,
+    detect_language,
+)
 from agents.intent_data import Intent
 from agents.live_session import TOOL_INTENT, live_setup, run_live_tool
 from config import get_settings
@@ -35,7 +39,7 @@ from memory import conversation_memory as memory
 from models.turn_analytics import TurnAnalytics
 from models.user import User
 from services.tts import TTSProvider, TTSUnavailable
-from tools import ToolContext, outcome_note
+from tools import ToolContext, outcome_note, track_booking
 from tools.confirmation import expire_older_proposals
 from voice.audio_utils import SAMPLE_RATE, Framer
 from voice.cascade_pipeline import SendAudio, SendJson, VoiceState
@@ -296,6 +300,10 @@ class LiveSession:
             responses = []
             for call in message["toolCall"].get("functionCalls", []):
                 name, args = call.get("name", ""), dict(call.get("args") or {})
+                if TOOL_INTENT.get(name) == Intent.BOOKING and not turn.tools:
+                    # The model decided this turn is about a booking
+                    await track_booking(self._context(), "received")
+                    await track_booking(self._context(), "intent_classified")
                 result = await run_live_tool(name, args, self._context())
                 turn.tools.append(name)
                 if note := outcome_note(name, result):
@@ -401,7 +409,7 @@ class LiveSession:
         await self._send_transcript(turn)
         intent = next(
             (TOOL_INTENT[name] for name in turn.tools if name in TOOL_INTENT),
-            (self._classifier or get_classifier()).classify(heard).intent,
+            (self._classifier or classifier_for_requests()).classify(heard).intent,
         )
         if turn.audio_sent and not interrupted:
             if turn.timer:

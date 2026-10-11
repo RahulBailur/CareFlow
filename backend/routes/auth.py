@@ -1,3 +1,4 @@
+import asyncio
 from functools import lru_cache
 from typing import Annotated
 
@@ -81,7 +82,8 @@ async def register(request: Request, body: RegisterRequest) -> AuthResponse:
         name=body.name.strip(),
         email=body.email.lower(),
         phone=body.phone,
-        password_hash=hash_password(body.password),
+        # bcrypt is slow on purpose; off the event loop, it no longer stalls everyone else
+        password_hash=await asyncio.to_thread(hash_password, body.password),
         role=Role.PATIENT,
     )
     try:
@@ -97,7 +99,8 @@ async def register(request: Request, body: RegisterRequest) -> AuthResponse:
 @limiter.limit(auth_limit)
 async def login(request: Request, body: LoginRequest) -> AuthResponse:
     user = await User.find_one(User.email == body.email.lower())
-    password_ok = verify_password(body.password, user.password_hash if user else _dummy_hash())
+    stored = user.password_hash if user else await asyncio.to_thread(_dummy_hash)
+    password_ok = await asyncio.to_thread(verify_password, body.password, stored)
     if user is None or not password_ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"

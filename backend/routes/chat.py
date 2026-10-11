@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from agents.orchestrator import run_text_turn
 from auth_utils import CurrentUser
 from rate_limit import chat_limit, limiter
+from services.redis_client import get_workflow_tracker
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -32,6 +33,25 @@ class ChatResponse(BaseModel):
     cached: bool
     answered_by: str
     tools_called: list[str]
+
+
+class WorkflowEvent(BaseModel):
+    stage: str
+    turn: str
+    at: str
+    tool: str | None = None
+
+
+class WorkflowOut(BaseModel):
+    session_id: str
+    events: list[WorkflowEvent]
+
+
+@router.get("/{session_id}/workflow")
+async def booking_workflow(user: CurrentUser, session_id: SessionId) -> WorkflowOut:
+    """Where the booking requests in one of the caller's own conversations have got to."""
+    events = await get_workflow_tracker().events(user.id, session_id)
+    return WorkflowOut(session_id=session_id, events=[WorkflowEvent(**e) for e in events])
 
 
 @router.post("")
